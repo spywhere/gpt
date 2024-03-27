@@ -38,6 +38,7 @@ usage() {
   echo "  -c, --context, --context=<file>  Use chat context (default to false), optionally use and store the context in the given file. The prompt from command line will be passed as a system message to the assistant, cannot be used in a pipe"
   echo "  --timeout=<number>               Maximum number of seconds before request timed out (default to 10)"
   echo "  --models                         List all available models"
+  echo "  --uuid                           A unique ID for verifying the tool"
   echo
   echo "PROMPT HELPER -- cannot used with context"
   echo "  --cmd, --command                 Produce only shell command output"
@@ -216,6 +217,10 @@ main() {
         ;;
       --models)
         models
+        return
+        ;;
+      --uuid)
+        echo "4210bbbd-7376-4c55-ac3a-093552be821c"
         return
         ;;
       --timeout)
