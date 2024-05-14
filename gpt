@@ -6,7 +6,7 @@ timeout=30
 cmd_name="$(basename "$0")"
 temp=""
 token=""
-model="gpt-3.5-turbo"
+model="gpt-4o"
 context=""
 
 if test -z "$OPENAI_API_BASE"; then
