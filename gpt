@@ -225,28 +225,28 @@ main() {
         ;;
       --timeout)
         if test -z "$equal_sign"; then
-          echo "ERROR: a number of seconds is required (perhaps missing an equal sign?)"
+          echo "ERROR: a number of seconds is required (perhaps missing an equal sign?)" >&2
           return 1
         fi
         timeout="$value"
         ;;
       -T | --temperature)
         if test -z "$equal_sign"; then
-          echo "ERROR: a temperature is required (perhaps missing an equal sign?)"
+          echo "ERROR: a temperature is required (perhaps missing an equal sign?)" >&2
           return 1
         fi
         temp="$value"
         ;;
       -t | --max-tokens)
         if test -z "$equal_sign"; then
-          echo "ERROR: a number of tokens is required (perhaps missing an equal sign?)"
+          echo "ERROR: a number of tokens is required (perhaps missing an equal sign?)" >&2
           return 1
         fi
         token="$value"
         ;;
       -m | --model)
         if test -z "$equal_sign"; then
-          echo "ERROR: a model ID is required (perhaps missing an equal sign?)"
+          echo "ERROR: a model ID is required (perhaps missing an equal sign?)" >&2
           return 1
         fi
         model="$value"
@@ -281,7 +281,7 @@ main() {
         break
         ;;
       -*)
-        echo "ERROR: unknown flag \"$1\""
+        echo "ERROR: unknown flag \"$1\"" >&2
         return 1
         ;;
       *)
@@ -293,14 +293,14 @@ main() {
   done
 
   if test -z "$OPENAI_API_KEY"; then
-    echo "ERROR: OPENAI_API_KEY is required"
+    echo "ERROR: OPENAI_API_KEY is required" >&2
     return 1
   fi
 
   local prompt=""
   if test "$use_stdin" -eq 1; then
     if test -n "$context"; then
-      echo "ERROR: context cannot be used in the pipe"
+      echo "ERROR: context cannot be used in the pipe" >&2
       return 1
     fi
     prompt="$(cat -)"
@@ -308,8 +308,8 @@ main() {
     prompt="$*"
   fi
   if test -z "$context" && test -z "$prompt"; then
-    echo "No prompt given"
-    echo "Use --help for usage"
+    echo "No prompt given" >&2
+    echo "Use --help for usage" >&2
     return
   fi
 
@@ -333,7 +333,7 @@ main() {
     if test "$context" != '-' && test -f "$context"; then
       prompts="$(jq -c . "$context" 2>/dev/null)"
       if test $? -ne 0; then
-        echo "ERROR: a given context '$context' is not in a correct structure"
+        echo "ERROR: a given context '$context' is not in a correct structure" >&2
         return 1
       fi
       jq -r '.[] | "[\(.role / "" | .[:1] |= map(ascii_upcase) | add)] \(.content)"' "$context"
