@@ -159,15 +159,15 @@ handle_status() {
     0)
       ;;
     1)
-      echo "ERROR: Request timed out"
+      echo "ERROR: Request timed out" >&2
       ;;
     2)
-      echo "ERROR: Bad response"
+      echo "ERROR: Bad response" >&2
       ;;
     3|4)
       ;;
     *)
-      echo "ERROR: Request failed"
+      echo "ERROR: Request failed" >&2
       ;;
   esac
   return "$status"
