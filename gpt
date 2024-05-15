@@ -1,12 +1,20 @@
 #!/bin/bash
 
-debug=0
-timeout=30
-
 cmd_name="$(basename "$0")"
-temp=""
-token=""
-model="gpt-4o"
+debug=0
+
+if test -z "$CLIGPT_TIMEOUT"; then
+  timeout=30
+fi
+if test -z "$CLIGPT_TEMP"; then
+  temp=""
+fi
+if test -z "$CLIGPT_TOKEN"; then
+  token=""
+fi
+if test -z "$CLIGPT_MODEL"; then
+  model="gpt-4o"
+fi
 context=""
 
 if test -z "$OPENAI_API_BASE"; then
@@ -30,20 +38,28 @@ usage() {
   echo "  OPENAI_API_BASE                  Host for OpenAI API (default to $(fallback_default "$OPENAI_API_BASE"))"
   echo "  OPENAI_API_KEY                   API key for the given OpenAI base"
   echo
+  echo "  CLIGPT_TEMP                      Sampling temperature, see the -T, --temperature flag below"
+  echo "  CLIGPT_TOKEN                     Maximum number of tokens to generate in the completion, see the -t, --max-tokens flag below"
+  echo "  CLIGPT_MODEL                     ID of the model to use, see the -m, --model flag below"
+  echo "  CLIGPT_TIMEOUT                   Maximum number of seconds before request timed out, see the --timeout flag below"
+  echo
   echo "FLAGS"
   echo "  -h, --help                       Show this message"
   echo "  -T, --temperature=<temp>         Sampling temperature, higher is more random (default to $(fallback_default "$temp"))"
   echo "  -t, --max-tokens=<number>        Maximum number of tokens to generate in the completion (default to $(fallback_default "$token"))"
   echo "  -m, --model=<name>               ID of the model to use (default to $(fallback_default "$model"))"
   echo "  -c, --context, --context=<file>  Use chat context (default to false), optionally use and store the context in the given file. The prompt from command line will be passed as a system message to the assistant, cannot be used in a pipe"
-  echo "  --timeout=<number>               Maximum number of seconds before request timed out (default to 10)"
+  echo "  --timeout=<number>               Maximum number of seconds before request timed out (default to "$(fallback_default "$timeout")")"
   echo "  --models                         List all available models"
   echo "  --uuid                           A unique ID for verifying the tool"
+  echo "  --debug                          Print request and response on to standard error"
+  echo "  --debug-dry                      Print request to standard error, but do not make a request"
   echo
   echo "PROMPT HELPER -- cannot used with context"
   echo "  --cmd, --command                 Produce only shell command output"
   echo "  --code                           Produce only one-liner code"
   echo "  --url                            Produce only URL for the given query"
+
   if test "$cmd_name" != "prepare-commit-msg"; then
     echo
     echo "ADDITIONAL USAGE"
