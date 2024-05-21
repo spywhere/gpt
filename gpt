@@ -408,9 +408,10 @@ hook() {
     exit 0
   fi
   if test -z "$GPT_COMMIT_PROMPT"; then
-    GPT_COMMIT_PROMPT="Write a one-line commit message not exceeding 79 characters following a conventional commit describing the following changes"
+    GPT_COMMIT_PROMPT="Write a one-line commit message in plain text (not a markdown) not exceeding 79 characters. The following is the last 5 commit messages from the project along with the changes itself, stick to the pattern of the project:"
   fi
 
+  GIT_COMMITS="$(git log -5 --pretty=format:'%s' --no-merges)"
   GIT_CHANGES="$(git diff --staged)"
 
   if test "$GIT_CHANGES" = ""; then
@@ -420,7 +421,7 @@ hook() {
 
   printf 'Generating commit message...\n'
 
-  GPT_MSG="$(printf '%s\n\n%s' "$GPT_COMMIT_PROMPT" "$GIT_CHANGES" | main)"
+  GPT_MSG="$(printf '%s\n\n%s\n\n%s' "$GPT_COMMIT_PROMPT" "$GIT_COMMITS" "$GIT_CHANGES" | main)"
   if test $? -ne 0; then
       printf '%s\n' "$GPT_MSG"
       exit $?
