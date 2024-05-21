@@ -32,7 +32,7 @@ fallback_default() {
 usage() {
   echo "USAGE"
   echo "  $cmd_name [flags] [--] <prompt>..."
-  echo "  cat <filename> | $cmd_name [flags]"
+  echo "  cat <filename> | $cmd_name [flags] [--] [prompt]..."
   echo
   echo "ENVIRONMENT VARIABLES"
   echo "  OPENAI_API_BASE                  Host for OpenAI API (default to $(fallback_default "$OPENAI_API_BASE"))"
@@ -319,7 +319,11 @@ main() {
       echo "ERROR: context cannot be used in the pipe" >&2
       return 1
     fi
-    prompt="$(cat -)"
+    if test -n "$*"; then
+      prompt="$(printf '%s:\n%s' "$*" "$(cat -)")"
+    else
+      prompt="$(cat -)"
+    fi
   else
     prompt="$*"
   fi
