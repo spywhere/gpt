@@ -3,6 +3,30 @@
 cmd_name="$(basename "$0")"
 debug=0
 
+esc_reset="" # reset
+esc_blue="" # indicate process
+esc_green="" # indicate options and information
+esc_yellow="" # indicate warnings
+esc_red="" # indicate errors
+
+if test -t 1 && test -n "$TERM" -a -n "$(command -v tput)" && test "$(tput colors)" -ge 8 && test -n "$(command -v tty)"; then
+  if test -n "$(command -v wc)"; then
+    inline_support=1
+  fi
+  esc_reset="$(tput sgr0)"
+  if test "$(tput colors)" -gt 8; then
+    esc_blue="$(tput setaf 12)"
+    esc_green="$(tput setaf 10)"
+    esc_yellow="$(tput setaf 11)"
+    esc_red="$(tput setaf 9)"
+  else
+    esc_blue="$(tput setaf 4)"
+    esc_green="$(tput setaf 2)"
+    esc_yellow="$(tput setaf 3)"
+    esc_red="$(tput setaf 1)"
+  fi
+fi
+
 if test -z "$CLIGPT_TIMEOUT"; then
   timeout=30
 fi
@@ -358,14 +382,14 @@ main() {
       fi
       jq -r '.[] | "[\(.role / "" | .[:1] |= map(ascii_upcase) | add)] \(.content)"' "$context"
     elif test -n "$prompt"; then
-      printf '[System] %s\n' "$prompt"
+      printf '%s[System]%s %s\n' "$esc_blue" "$esc_reset" "$prompt"
       prompts="$(additem "$prompts" "$(printf '{"role":"system","content":%s}' "$(tojson "$prompt")")")"
     fi
   fi
 
   while true; do
     if test -n "$context"; then
-      printf '[User] '
+      printf '%s[User]%s ' "$esc_green" "$esc_reset"
       if read -r line && test -n "$line"; then
         prompts="$(additem "$prompts" "$(printf '{"role":"user","content":%s}' "$(tojson "$line")")")"
       else
@@ -387,7 +411,7 @@ main() {
     content="$(printf '%s' "$response" | jq -r '.choices[] | .message.content')"
     prompts="$(additem "$prompts" "$(printf '{"role":"assistant","content":%s}' "$(tojson "$content")")")"
     if test -n "$context"; then
-      printf '[Assistant] %s\n' "$content"
+      printf '%s[Assistant]%s %s\n' "$esc_yellow" "$esc_reset" "$content"
     else
       printf '%s\n' "$content"
     fi
