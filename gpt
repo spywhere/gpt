@@ -314,12 +314,7 @@ main() {
         if test -z "$output"; then
           return 1
         fi
-        context="$CLIGPT_CONTEXT_STORAGE/$output"
-        parse_context "$context" 2>/dev/null >/dev/null
-        if test $? -ne 0; then
-          echo "ERROR: a given context '$context' is not in a correct structure" >&2
-          return 1
-        fi
+        context="$(realpath "$CLIGPT_CONTEXT_STORAGE/$output")"
         ;;
       --timeout)
         if test -z "$equal_sign"; then
@@ -353,7 +348,7 @@ main() {
         if test -z "$equal_sign"; then
           context='-'
         else
-          context="$CLIGPT_CONTEXT_STORAGE/$value"
+          context="$(realpath "$CLIGPT_CONTEXT_STORAGE/$value")"
         fi
         ;;
       --parse)
@@ -450,8 +445,9 @@ main() {
       if test $? -ne 0; then
         return 1
       fi
-      parse_context "$context"
+      parse_context "$context" 2>/dev/null
       if test $? -ne 0; then
+        echo "ERROR: a given context '$context' is not in a correct structure" >&2
         return 1
       fi
     elif test -n "$prompt"; then
