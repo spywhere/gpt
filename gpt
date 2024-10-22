@@ -241,16 +241,27 @@ models() {
   fi
 }
 
-parse() {
-  context="$1"
+validate_context() {
+  local context="$1"
   if ! test -f "$context"; then
     echo "ERROR: a given context '$context' is not found" >&2
     return 1
   fi
 
-  prompts="$(jq -c . "$context" 2>/dev/null)"
+  local prompts="$(jq -c . "$context" 2>/dev/null)"
   if test $? -ne 0; then
     echo "ERROR: a given context '$context' is not in a correct structure" >&2
+    return 1
+  fi
+
+  if test -n "$2"; then
+    printf '%s' "$prompts"
+  fi
+}
+
+parse_context() {
+  local context="$1"
+  if ! validate_context "$context"; then
     return 1
   fi
   jq -r '.[] | "\({"system": "\($blue)[System]\($reset)", "user": "\($green)[User]\($reset)", "assistant": "\($yellow)[Assistant]\($reset)"}[.role] // "[\(.role  / "" | .[:1] |= map(ascii_upcase) | add)]") \(.content)"' --arg reset "$esc_reset" --arg blue "$esc_blue" --arg green "$esc_green" --arg yellow "$esc_yellow" "$context"
@@ -299,12 +310,12 @@ main() {
           return 1
         fi
         shift
-        output="$(find "$CLIGPT_CONTEXT_STORAGE" -maxdepth 1 -type f | rev | cut -d'/' -f1 | rev | fzf "--preview=GPT_FORCE_COLOR=1 $0 --parse={}" '--bind=ctrl-/:toggle-preview,ctrl-d:preview-half-page-down,ctrl-u:preview-half-page-up' '--preview-label=Chat History' '--preview-window=down:70%:wrap')"
+        output="$(find "$CLIGPT_CONTEXT_STORAGE" -maxdepth 1 -type f | rev | cut -d'/' -f1 | rev | fzf "--preview=CLIGPT_FORCE_COLOR=1 $0 --parse={}" '--bind=ctrl-/:toggle-preview,ctrl-d:preview-half-page-down,ctrl-u:preview-half-page-up' '--preview-label=Chat History' '--preview-window=down:70%:wrap')"
         if test -z "$output"; then
           return 1
         fi
         context="$CLIGPT_CONTEXT_STORAGE/$output"
-        jq -c . "$context" 2>/dev/null >/dev/null
+        parse_context "$context" 2>/dev/null >/dev/null
         if test $? -ne 0; then
           echo "ERROR: a given context '$context' is not in a correct structure" >&2
           return 1
@@ -342,7 +353,7 @@ main() {
         if test -z "$equal_sign"; then
           context='-'
         else
-          context="$value"
+          context="$CLIGPT_CONTEXT_STORAGE/$value"
         fi
         ;;
       --parse)
@@ -350,8 +361,12 @@ main() {
           echo "ERROR: a context is required (perhaps missing an equal sign?)" >&2
           return 1
         else
-          parse "$value"
-          return $?
+          parse_context "$value" 2>/dev/null
+          if test $? -ne 0; then
+            echo "ERROR: a given context '$value' is not in a correct structure" >&2
+            return 1
+          fi
+          return
         fi
         ;;
       --copilot)
@@ -431,7 +446,11 @@ main() {
       printf -- "==== Context will be stored in '%s' ====\n" "$context"
     fi
     if test "$context" != '-' && test -f "$context"; then
-      parse "$context"
+      prompts="$(validate_context "$context" yes)"
+      if test $? -ne 0; then
+        return 1
+      fi
+      parse_context "$context"
       if test $? -ne 0; then
         return 1
       fi
@@ -473,11 +492,7 @@ main() {
     if test -z "$context"; then
       break
     elif test "$context" != '-'; then
-      if test -d "$CLIGPT_CONTEXT_STORAGE"; then
-        printf '%s' "$prompts" > "$CLIGPT_CONTEXT_STORAGE/$context"
-      else
-        printf '%s' "$prompts" > "$context"
-      fi
+      printf '%s' "$prompts" > "$context"
     fi
   done
 }
@@ -548,7 +563,7 @@ EOF
 }
 
 self_test() {
-  test_result=0
+  local test_result=0
   if ! test -n "$(command -v curl)"; then
     echo "ERROR: curl is required" >&2
     test_result=1
