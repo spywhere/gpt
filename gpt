@@ -304,6 +304,11 @@ main() {
           return 1
         fi
         context="$CLIGPT_CONTEXT_STORAGE/$output"
+        jq -c . "$context" 2>/dev/null >/dev/null
+        if test $? -ne 0; then
+          echo "ERROR: a given context '$context' is not in a correct structure" >&2
+          return 1
+        fi
         ;;
       --timeout)
         if test -z "$equal_sign"; then
@@ -542,11 +547,33 @@ preexec_functions+=gpt_prompt
 EOF
 }
 
+self_test() {
+  test_result=0
+  if ! test -n "$(command -v curl)"; then
+    echo "ERROR: curl is required" >&2
+    test_result=1
+  fi
+  if ! test -n "$(command -v jq)"; then
+    echo "ERROR: jq is required" >&2
+    test_result=1
+  elif test "$(jq --version | rev | cut -c1-6 | rev)" = "-dirty"; then
+    # macOS Sequoia comes with jq, but lack certain functionalities (such as return code)
+    echo "ERROR: jq is found to be a dirty version ($(jq --version)) which might not working correctly." >&2
+    echo "Try install a more stable version instead." >&2
+    test_result=1
+  fi
+
+  return $test_result
+}
+
 case "$cmd_name" in
   prepare-commit-msg)
     hook "$@"
     ;;
   *)
+    if ! self_test; then
+      exit 1
+    fi
     main "$@"
     ;;
 esac
