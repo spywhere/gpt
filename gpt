@@ -9,7 +9,7 @@ esc_green="" # indicate options and information
 esc_yellow="" # indicate warnings
 esc_red="" # indicate errors
 
-if test -t 1 && test -n "$TERM" -a -n "$(command -v tput)" && test "$(tput colors)" -ge 8 && test -n "$(command -v tty)"; then
+if test -n "$CLIGPT_FORCE_COLOR" || (test -t 1 && test -n "$TERM" -a -n "$(command -v tput)" && test "$(tput colors)" -ge 8 && test -n "$(command -v tty)"); then
   if test -n "$(command -v wc)"; then
     inline_support=1
   fi
@@ -27,6 +27,9 @@ if test -t 1 && test -n "$TERM" -a -n "$(command -v tput)" && test "$(tput color
   fi
 fi
 
+if test -z "$CLIGPT_CONTEXT_STORAGE"; then
+  CLIGPT_CONTEXT_STORAGE="."
+fi
 if test -z "$CLIGPT_TIMEOUT"; then
   timeout=30
 fi
@@ -66,6 +69,8 @@ usage() {
   echo "  CLIGPT_TOKEN                     Maximum number of tokens to generate in the completion, see the -t, --max-tokens flag below"
   echo "  CLIGPT_MODEL                     ID of the model to use, see the -m, --model flag below"
   echo "  CLIGPT_TIMEOUT                   Maximum number of seconds before request timed out, see the --timeout flag below"
+  echo "  CLIGPT_FORCE_COLOR               Maximum number of seconds before request timed out, see the --timeout flag below"
+  echo "  CLIGPT_CONTEXT_STORAGE           Directory to store/load the context file (default to current directory)"
   echo
   echo "FLAGS"
   echo "  -h, --help                       Show this message"
@@ -83,6 +88,9 @@ usage() {
   echo "  --cmd, --command                 Produce only shell command output"
   echo "  --code                           Produce only one-liner code"
   echo "  --url                            Produce only URL for the given query"
+  echo
+  echo "CONTEXT LOADER"
+  echo "  --fzf                            Fuzzy search for the context file in context storage (see CLIGPT_CONTEXT_STORAGE above) using fzf (fzf is required)"
 
   if test "$cmd_name" != "prepare-commit-msg"; then
     echo
@@ -278,6 +286,25 @@ main() {
         echo "4210bbbd-7376-4c55-ac3a-093552be821c"
         return
         ;;
+      --fzf)
+        if ! test -n "$(command -v fzf)"; then
+          echo "ERROR: fzf is required" >&2
+          return 1
+        fi
+        if test -z "$CLIGPT_CONTEXT_STORAGE"; then
+          echo "ERROR: GPT_CONTEXT_STORAGE is not yet setup" >&2
+          return 1
+        elif ! test -d "$CLIGPT_CONTEXT_STORAGE"; then
+          echo "ERROR: no context found on \"$CLIGPT_CONTEXT_STORAGE\" (perhaps storage is empty?)" >&2
+          return 1
+        fi
+        shift
+        output="$(find "$CLIGPT_CONTEXT_STORAGE" -maxdepth 1 -type f | rev | cut -d'/' -f1 | rev | fzf "--preview=GPT_FORCE_COLOR=1 $0 --parse={}" '--bind=ctrl-/:toggle-preview,ctrl-d:preview-half-page-down,ctrl-u:preview-half-page-up' '--preview-label=Chat History' '--preview-window=down:70%:wrap')"
+        if test -z "$output"; then
+          return 1
+        fi
+        context="$CLIGPT_CONTEXT_STORAGE/$output"
+        ;;
       --timeout)
         if test -z "$equal_sign"; then
           echo "ERROR: a number of seconds is required (perhaps missing an equal sign?)" >&2
@@ -441,7 +468,11 @@ main() {
     if test -z "$context"; then
       break
     elif test "$context" != '-'; then
-      printf '%s' "$prompts" > "$context"
+      if test -d "$CLIGPT_CONTEXT_STORAGE"; then
+        printf '%s' "$prompts" > "$CLIGPT_CONTEXT_STORAGE/$context"
+      else
+        printf '%s' "$prompts" > "$context"
+      fi
     fi
   done
 }
