@@ -233,6 +233,21 @@ models() {
   fi
 }
 
+parse() {
+  context="$1"
+  if ! test -f "$context"; then
+    echo "ERROR: a given context '$context' is not found" >&2
+    return 1
+  fi
+
+  prompts="$(jq -c . "$context" 2>/dev/null)"
+  if test $? -ne 0; then
+    echo "ERROR: a given context '$context' is not in a correct structure" >&2
+    return 1
+  fi
+  jq -r '.[] | "\({"system": "\($blue)[System]\($reset)", "user": "\($green)[User]\($reset)", "assistant": "\($yellow)[Assistant]\($reset)"}[.role] // "[\(.role  / "" | .[:1] |= map(ascii_upcase) | add)]") \(.content)"' --arg reset "$esc_reset" --arg blue "$esc_blue" --arg green "$esc_green" --arg yellow "$esc_yellow" "$context"
+}
+
 main() {
   local use_stdin=1
   if tty -s >/dev/null 2>&1; then
@@ -296,6 +311,15 @@ main() {
           context='-'
         else
           context="$value"
+        fi
+        ;;
+      --parse)
+        if test -z "$equal_sign"; then
+          echo "ERROR: a context is required (perhaps missing an equal sign?)" >&2
+          return 1
+        else
+          parse "$value"
+          return $?
         fi
         ;;
       --copilot)
@@ -375,12 +399,10 @@ main() {
       printf -- "==== Context will be stored in '%s' ====\n" "$context"
     fi
     if test "$context" != '-' && test -f "$context"; then
-      prompts="$(jq -c . "$context" 2>/dev/null)"
+      parse "$context"
       if test $? -ne 0; then
-        echo "ERROR: a given context '$context' is not in a correct structure" >&2
         return 1
       fi
-      jq -r '.[] | "[\(.role / "" | .[:1] |= map(ascii_upcase) | add)] \(.content)"' "$context"
     elif test -n "$prompt"; then
       printf '%s[System]%s %s\n' "$esc_blue" "$esc_reset" "$prompt"
       prompts="$(additem "$prompts" "$(printf '{"role":"system","content":%s}' "$(tojson "$prompt")")")"
