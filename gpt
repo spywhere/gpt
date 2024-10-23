@@ -347,8 +347,10 @@ main() {
       -c | --context)
         if test -z "$equal_sign"; then
           context='-'
-        else
+        elif test -f "$CLIGPT_CONTEXT_STORAGE/$value"; then
           context="$(realpath "$CLIGPT_CONTEXT_STORAGE/$value")"
+        else
+          context="$(realpath "$CLIGPT_CONTEXT_STORAGE")/$value"
         fi
         ;;
       --parse)
