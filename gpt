@@ -9,6 +9,7 @@ esc_green="" # indicate options and information
 esc_yellow="" # indicate warnings
 esc_red="" # indicate errors
 
+inline_support=0
 if test -n "$CLIGPT_FORCE_COLOR" || (test -t 1 && test -n "$TERM" -a -n "$(command -v tput)" && test "$(tput colors)" -ge 8 && test -n "$(command -v tty)"); then
   if test -n "$(command -v wc)"; then
     inline_support=1
@@ -26,6 +27,10 @@ if test -n "$CLIGPT_FORCE_COLOR" || (test -t 1 && test -n "$TERM" -a -n "$(comma
     esc_red="$(tput setaf 1)"
   fi
 fi
+
+is_interactive() {
+  return $(( 1 - inline_support ))
+}
 
 if test -z "$CLIGPT_CONTEXT_STORAGE"; then
   CLIGPT_CONTEXT_STORAGE="."
@@ -179,10 +184,38 @@ openai() {
   if test "$debug" -eq 2; then
     return 4
   fi
+  task() {
+    curl -m "$timeout" -X "$method" -d "$body" -sSL "$OPENAI_API_BASE/$path" -H 'Content-Type: application/json' -H "Authorization: Bearer $OPENAI_API_KEY" 2>/dev/null
+  }
   local response
-  response="$(curl -m "$timeout" -X "$method" -d "$body" -sSL "$OPENAI_API_BASE/$path" -H 'Content-Type: application/json' -H "Authorization: Bearer $OPENAI_API_KEY" 2>/dev/null)"
-  if test $? -ne 0; then
-    return 1
+  if is_interactive; then
+    local tmp="$(mktemp)"
+    task >"$tmp" &
+    local pid=$!
+
+    local anim=".  .. ... ..  .   "
+    while true; do
+      if ! kill -0 "$pid" 2>/dev/null; then
+        printf '\r   \r' >&2
+        break
+      fi
+
+      local char="$(echo "$anim" | cut -c1-3)"
+      printf '\r%s' "$char" >&2
+      anim="$(echo "$anim" | cut -c4-)$char"
+      sleep 0.3
+    done
+
+    wait "$pid"
+    if test $? -ne 0; then
+      return 1
+    fi
+    response="$(cat "$tmp")"
+  else
+    response="$(task)"
+    if test $? -ne 0; then
+      return 1
+    fi
   fi
 
   if test "$debug" -ge 1; then
