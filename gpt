@@ -574,13 +574,10 @@ main() {
       prompts="$(additem "$prompts" "$(printf '{"role":"user","content":%s}' "$(tojson "$prompt")")")"
     fi
 
-    if test -n "$context"; then
-      draw_ui
-    fi
+    draw_ui
     body="$(setitem "$body" "messages" "$prompts")"
     response="$(openai chat/completions "$body" '.')"
-    local code="$?"
-    if ! handle_status "$code"; then
+    if ! handle_status "$?"; then
       return 1
     fi
     restore_ui
