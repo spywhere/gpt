@@ -3,11 +3,11 @@
 tempfile="$(mktemp)"
 cmd_name="$(basename "$0")"
 debug=0
-simple=0
+fancy=0
 context=""
 
-is_simple() {
-  return $(( 1 - simple ))
+is_fancy() {
+  return $(( 1 - fancy ))
 }
 
 esc_reset="" # reset
@@ -35,7 +35,7 @@ if test -n "$CLIGPT_FORCE_COLOR" || (test -t 1 && test -n "$TERM" -a -n "$(comma
   fi
 
   draw_ui() {
-    if is_simple || test -z "$context"; then
+    if ! is_fancy || test -z "$context"; then
       return
     fi
     tput sc
@@ -44,7 +44,7 @@ if test -n "$CLIGPT_FORCE_COLOR" || (test -t 1 && test -n "$TERM" -a -n "$(comma
   }
 
   restore_ui() {
-    if is_simple || test -z "$context"; then
+    if ! is_fancy || test -z "$context"; then
       return
     fi
     tput rc
@@ -116,7 +116,7 @@ usage() {
   echo "  -m, --model=<name>               ID of the model to use (default to $(fallback_default "$model"))"
   echo "  -c, --context, --context=<file>  Use chat context (default to false), optionally use and store the context in the given file. The prompt from command line will be passed as a system message to the assistant, cannot be used in a pipe"
   echo "  --timeout=<number>               Maximum number of seconds before request timed out (default to "$(fallback_default "$timeout")")"
-  echo "  --simple                         Keep UI simple"
+  echo "  --fancy                          Use fancy UI"
   echo "  --models                         List all available models"
   echo "  --uuid                           A unique ID for verifying the tool"
   echo "  --debug                          Print request and response on to standard error"
@@ -468,8 +468,8 @@ main() {
       --url)
         kind="url"
         ;;
-      --simple)
-        simple=1
+      --fancy)
+        fancy=1
         ;;
       --debug)
         debug=1
@@ -558,7 +558,7 @@ main() {
       printf '%s[User]%s ' "$esc_green" "$esc_reset"
       if read -r line && test -n "$line"; then
         restore_ui
-        if ! is_simple; then
+        if is_fancy; then
           printf '%s[User]%s %s\n' "$esc_green" "$esc_reset" "$line"
         fi
         prompts="$(additem "$prompts" "$(printf '{"role":"user","content":%s}' "$(tojson "$line")")")"
