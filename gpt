@@ -312,11 +312,13 @@ parse_context() {
   if ! validate_context "$context"; then
     return 1
   fi
+  local flags="-rcM"
   local filter=""
   if ! is_json; then
+    flags="-r"
     filter=' | "\({"system": "\($blue)[System]\($reset)", "user": "\($green)[User]\($reset)", "assistant": "\($yellow)[Assistant]\($reset)"}[.role] // "[\(.role  / "" | .[:1] |= map(ascii_upcase) | add)]") \(.content)"'
   fi
-  jq -cr ".[]$filter" --arg reset "$esc_reset" --arg blue "$esc_blue" --arg green "$esc_green" --arg yellow "$esc_yellow" "$context"
+  jq "$flags" ".[]$filter" --arg reset "$esc_reset" --arg blue "$esc_blue" --arg green "$esc_green" --arg yellow "$esc_yellow" "$context"
 }
 
 main() {
@@ -510,7 +512,7 @@ main() {
     elif test -n "$prompt"; then
       data="$(printf '{"role":"system","content":%s}' "$(tojson "$prompt")")"
       if is_json; then
-        printf '%s' "$data" | jq -c
+        printf '%s\n' "$data"
       else
         printf '%s[System]%s %s\n' "$esc_blue" "$esc_reset" "$prompt"
       fi
@@ -545,7 +547,7 @@ main() {
     data="$(printf '{"role":"assistant","content":%s}' "$(tojson "$content")")"
     prompts="$(additem "$prompts" "$data")"
     if is_json; then
-      printf '%s' "$data" | jq -c
+      printf '%s\n' "$data"
     elif test -n "$context"; then
       printf '%s[Assistant]%s %s\n' "$esc_yellow" "$esc_reset" "$content"
     else
