@@ -4,6 +4,7 @@ tempfile="$(mktemp)"
 cmd_name="$(basename "$0")"
 debug=0
 fancy=0
+padding=1
 context=""
 
 is_fancy() {
@@ -39,7 +40,7 @@ if test -n "$CLIGPT_FORCE_COLOR" || (test -t 1 && test -n "$TERM" -a -n "$(comma
       return
     fi
     tput sc
-    tput cup "$(( $(tput lines) - 3 ))" 0
+    tput cup "$(( $(tput lines) - 2 - padding ))" 0
     printf '%s\n' "$(repeat -)"
   }
 
@@ -116,7 +117,7 @@ usage() {
   echo "  -m, --model=<name>               ID of the model to use (default to $(fallback_default "$model"))"
   echo "  -c, --context, --context=<file>  Use chat context (default to false), optionally use and store the context in the given file. The prompt from command line will be passed as a system message to the assistant, cannot be used in a pipe"
   echo "  --timeout=<number>               Maximum number of seconds before request timed out (default to "$(fallback_default "$timeout")")"
-  echo "  --fancy                          Use fancy UI"
+  echo "  --fancy[=<number>]               Use fancy UI with the given minimum padding (default to "$padding")"
   echo "  --models                         List all available models"
   echo "  --uuid                           A unique ID for verifying the tool"
   echo "  --debug                          Print request and response on to standard error"
@@ -470,6 +471,9 @@ main() {
         ;;
       --fancy)
         fancy=1
+        if test -n "$equal_sign"; then
+          padding="$value"
+        fi
         ;;
       --debug)
         debug=1
