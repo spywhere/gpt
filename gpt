@@ -228,7 +228,8 @@ openai() {
   task() {
     curl -m "$timeout" -X "$method" -d "$body" -sSL "$OPENAI_API_BASE/$path" -H 'Content-Type: application/json' -H "Authorization: Bearer $OPENAI_API_KEY" 2>/dev/null
   }
-  local response="$(run_task task)"
+  local response
+  response="$(run_task task)"
   if test $? -ne 0; then
     return 1
   fi
