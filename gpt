@@ -3,10 +3,11 @@
 tempfile="$(mktemp)"
 cmd_name="$(basename "$0")"
 debug=0
-json=0
+simple=0
+context=""
 
-is_json() {
-  return $(( 1 - json ))
+is_simple() {
+  return $(( 1 - simple ))
 }
 
 esc_reset="" # reset
@@ -32,6 +33,32 @@ if test -n "$CLIGPT_FORCE_COLOR" || (test -t 1 && test -n "$TERM" -a -n "$(comma
     esc_yellow="$(tput setaf 3)"
     esc_red="$(tput setaf 1)"
   fi
+
+  draw_ui() {
+    if is_simple || test -z "$context"; then
+      return
+    fi
+    tput sc
+    tput cup "$(( $(tput lines) - 3 ))" 0
+    printf '%s\n' "$(repeat -)"
+  }
+
+  restore_ui() {
+    if is_simple || test -z "$context"; then
+      return
+    fi
+    tput rc
+    tput ed
+    tput rc >&2
+    tput ed >&2
+  }
+else
+  draw_ui() {
+    return 0
+  }
+  restore_ui() {
+    return 0
+  }
 fi
 
 is_interactive() {
@@ -53,7 +80,6 @@ fi
 if test -z "$CLIGPT_MODEL"; then
   model="gpt-4o"
 fi
-context=""
 
 if test -z "$OPENAI_API_BASE"; then
   OPENAI_API_BASE="https://api.openai.com/v1"
@@ -80,7 +106,7 @@ usage() {
   echo "  CLIGPT_TOKEN                     Maximum number of tokens to generate in the completion, see the -t, --max-tokens flag below"
   echo "  CLIGPT_MODEL                     ID of the model to use, see the -m, --model flag below"
   echo "  CLIGPT_TIMEOUT                   Maximum number of seconds before request timed out, see the --timeout flag below"
-  echo "  CLIGPT_FORCE_COLOR               Maximum number of seconds before request timed out, see the --timeout flag below"
+  echo "  CLIGPT_FORCE_COLOR               Set to non-empty to force rendering with colors"
   echo "  CLIGPT_CONTEXT_STORAGE           Directory to store/load the context file (default to current directory)"
   echo
   echo "FLAGS"
@@ -90,7 +116,7 @@ usage() {
   echo "  -m, --model=<name>               ID of the model to use (default to $(fallback_default "$model"))"
   echo "  -c, --context, --context=<file>  Use chat context (default to false), optionally use and store the context in the given file. The prompt from command line will be passed as a system message to the assistant, cannot be used in a pipe"
   echo "  --timeout=<number>               Maximum number of seconds before request timed out (default to "$(fallback_default "$timeout")")"
-  echo "  --json                           Output conversations in JSON"
+  echo "  --simple                         Keep UI simple"
   echo "  --models                         List all available models"
   echo "  --uuid                           A unique ID for verifying the tool"
   echo "  --debug                          Print request and response on to standard error"
@@ -170,6 +196,7 @@ handle_gpt_response() {
   local errmsg
   errmsg="$(printf '%s' "$response" | jq -er '.error.message')"
   if test "$?" -eq 0; then
+    restore_ui
     printf 'ERROR: [%s] %s\n' "$(printf '%s' "$response" | jq -r '.error.type')" "$errmsg" >&2
     return 1
   fi
@@ -198,7 +225,7 @@ loader() {
 
 run_task() {
   local task="$1"
-  if ! is_interactive || is_json; then
+  if ! is_interactive; then
     "$task"
     return $?
   fi
@@ -256,14 +283,17 @@ handle_status() {
     0)
       ;;
     1)
+      restore_ui
       echo "ERROR: Request timed out" >&2
       ;;
     2)
+      restore_ui
       echo "ERROR: Bad response" >&2
       ;;
     3|4)
       ;;
     *)
+      restore_ui
       echo "ERROR: Request failed" >&2
       ;;
   esac
@@ -313,13 +343,18 @@ parse_context() {
   if ! validate_context "$context"; then
     return 1
   fi
-  local flags="-rcM"
-  local filter=""
-  if ! is_json; then
-    flags="-r"
-    filter=' | "\({"system": "\($blue)[System]\($reset)", "user": "\($green)[User]\($reset)", "assistant": "\($yellow)[Assistant]\($reset)"}[.role] // "[\(.role  / "" | .[:1] |= map(ascii_upcase) | add)]") \(.content)"'
+  local filter=' | "\({"system": "\($blue)[System]\($reset)", "user": "\($green)[User]\($reset)", "assistant": "\($yellow)[Assistant]\($reset)"}[.role] // "[\(.role  / "" | .[:1] |= map(ascii_upcase) | add)]") \(.content)"'
+  jq -r ".[]$filter" --arg reset "$esc_reset" --arg blue "$esc_blue" --arg green "$esc_green" --arg yellow "$esc_yellow" "$context"
+}
+
+repeat() {
+  local str="$1"
+  if test -z "$str"; then
+    str=" "
   fi
-  jq "$flags" ".[]$filter" --arg reset "$esc_reset" --arg blue "$esc_blue" --arg green "$esc_green" --arg yellow "$esc_yellow" "$context"
+  for i in $(seq "$(tput cols)"); do
+    printf '%s' "$str"
+  done
 }
 
 main() {
@@ -433,8 +468,8 @@ main() {
       --url)
         kind="url"
         ;;
-      --json)
-        json=1
+      --simple)
+        simple=1
         ;;
       --debug)
         debug=1
@@ -497,7 +532,7 @@ main() {
 
   local prompts="[]"
   if test -n "$context"; then
-    if ! is_json && test "$context" != '-'; then
+    if test "$context" != '-'; then
       printf -- "==== Context will be stored in '%s' ====\n" "$context"
     fi
     if test "$context" != '-' && test -f "$context"; then
@@ -512,23 +547,23 @@ main() {
       fi
     elif test -n "$prompt"; then
       data="$(printf '{"role":"system","content":%s}' "$(tojson "$prompt")")"
-      if is_json; then
-        printf '%s\n' "$data"
-      else
-        printf '%s[System]%s %s\n' "$esc_blue" "$esc_reset" "$prompt"
-      fi
+      printf '%s[System]%s %s\n' "$esc_blue" "$esc_reset" "$prompt"
       prompts="$(additem "$prompts" "$data")"
     fi
   fi
 
   while true; do
     if test -n "$context"; then
-      if ! is_json; then
-        printf '%s[User]%s ' "$esc_green" "$esc_reset"
-      fi
+      draw_ui
+      printf '%s[User]%s ' "$esc_green" "$esc_reset"
       if read -r line && test -n "$line"; then
+        restore_ui
+        if ! is_simple; then
+          printf '%s[User]%s %s\n' "$esc_green" "$esc_reset" "$line"
+        fi
         prompts="$(additem "$prompts" "$(printf '{"role":"user","content":%s}' "$(tojson "$line")")")"
       else
+        restore_ui
         break
       fi
     else
@@ -539,17 +574,20 @@ main() {
       prompts="$(additem "$prompts" "$(printf '{"role":"user","content":%s}' "$(tojson "$prompt")")")"
     fi
 
+    if test -n "$context"; then
+      draw_ui
+    fi
     body="$(setitem "$body" "messages" "$prompts")"
     response="$(openai chat/completions "$body" '.')"
-    if ! handle_status "$?"; then
+    local code="$?"
+    if ! handle_status "$code"; then
       return 1
     fi
+    restore_ui
     content="$(printf '%s' "$response" | jq -r '.choices[] | .message.content')"
     data="$(printf '{"role":"assistant","content":%s}' "$(tojson "$content")")"
     prompts="$(additem "$prompts" "$data")"
-    if is_json; then
-      printf '%s\n' "$data"
-    elif test -n "$context"; then
+    if test -n "$context"; then
       printf '%s[Assistant]%s %s\n' "$esc_yellow" "$esc_reset" "$content"
     else
       printf '%s\n' "$content"
