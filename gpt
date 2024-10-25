@@ -3,6 +3,11 @@
 tempfile="$(mktemp)"
 cmd_name="$(basename "$0")"
 debug=0
+json=0
+
+is_json() {
+  return $(( 1 - json ))
+}
 
 esc_reset="" # reset
 esc_blue="" # indicate process
@@ -85,6 +90,7 @@ usage() {
   echo "  -m, --model=<name>               ID of the model to use (default to $(fallback_default "$model"))"
   echo "  -c, --context, --context=<file>  Use chat context (default to false), optionally use and store the context in the given file. The prompt from command line will be passed as a system message to the assistant, cannot be used in a pipe"
   echo "  --timeout=<number>               Maximum number of seconds before request timed out (default to "$(fallback_default "$timeout")")"
+  echo "  --json                           Output conversations in JSON"
   echo "  --models                         List all available models"
   echo "  --uuid                           A unique ID for verifying the tool"
   echo "  --debug                          Print request and response on to standard error"
@@ -192,7 +198,7 @@ loader() {
 
 run_task() {
   local task="$1"
-  if ! is_interactive; then
+  if ! is_interactive || is_json; then
     "$task"
     return $?
   fi
@@ -306,7 +312,11 @@ parse_context() {
   if ! validate_context "$context"; then
     return 1
   fi
-  jq -r '.[] | "\({"system": "\($blue)[System]\($reset)", "user": "\($green)[User]\($reset)", "assistant": "\($yellow)[Assistant]\($reset)"}[.role] // "[\(.role  / "" | .[:1] |= map(ascii_upcase) | add)]") \(.content)"' --arg reset "$esc_reset" --arg blue "$esc_blue" --arg green "$esc_green" --arg yellow "$esc_yellow" "$context"
+  local filter=""
+  if ! is_json; then
+    filter=' | "\({"system": "\($blue)[System]\($reset)", "user": "\($green)[User]\($reset)", "assistant": "\($yellow)[Assistant]\($reset)"}[.role] // "[\(.role  / "" | .[:1] |= map(ascii_upcase) | add)]") \(.content)"'
+  fi
+  jq -cr ".[]$filter" --arg reset "$esc_reset" --arg blue "$esc_blue" --arg green "$esc_green" --arg yellow "$esc_yellow" "$context"
 }
 
 main() {
@@ -420,6 +430,9 @@ main() {
       --url)
         kind="url"
         ;;
+      --json)
+        json=1
+        ;;
       --debug)
         debug=1
         ;;
@@ -481,7 +494,7 @@ main() {
 
   local prompts="[]"
   if test -n "$context"; then
-    if test "$context" != '-'; then
+    if ! is_json && test "$context" != '-'; then
       printf -- "==== Context will be stored in '%s' ====\n" "$context"
     fi
     if test "$context" != '-' && test -f "$context"; then
@@ -495,14 +508,21 @@ main() {
         return 1
       fi
     elif test -n "$prompt"; then
-      printf '%s[System]%s %s\n' "$esc_blue" "$esc_reset" "$prompt"
-      prompts="$(additem "$prompts" "$(printf '{"role":"system","content":%s}' "$(tojson "$prompt")")")"
+      data="$(printf '{"role":"system","content":%s}' "$(tojson "$prompt")")"
+      if is_json; then
+        printf '%s' "$data" | jq -c
+      else
+        printf '%s[System]%s %s\n' "$esc_blue" "$esc_reset" "$prompt"
+      fi
+      prompts="$(additem "$prompts" "$data")"
     fi
   fi
 
   while true; do
     if test -n "$context"; then
-      printf '%s[User]%s ' "$esc_green" "$esc_reset"
+      if ! is_json; then
+        printf '%s[User]%s ' "$esc_green" "$esc_reset"
+      fi
       if read -r line && test -n "$line"; then
         prompts="$(additem "$prompts" "$(printf '{"role":"user","content":%s}' "$(tojson "$line")")")"
       else
@@ -522,8 +542,11 @@ main() {
       return 1
     fi
     content="$(printf '%s' "$response" | jq -r '.choices[] | .message.content')"
-    prompts="$(additem "$prompts" "$(printf '{"role":"assistant","content":%s}' "$(tojson "$content")")")"
-    if test -n "$context"; then
+    data="$(printf '{"role":"assistant","content":%s}' "$(tojson "$content")")"
+    prompts="$(additem "$prompts" "$data")"
+    if is_json; then
+      printf '%s' "$data" | jq -c
+    elif test -n "$context"; then
       printf '%s[Assistant]%s %s\n' "$esc_yellow" "$esc_reset" "$content"
     else
       printf '%s\n' "$content"
