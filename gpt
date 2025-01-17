@@ -66,29 +66,55 @@ is_interactive() {
   return $(( 1 - inline_support ))
 }
 
-if test -z "$CLIGPT_CONTEXT_STORAGE"; then
-  CLIGPT_CONTEXT_STORAGE="."
-fi
-if test -z "$CLIGPT_TIMEOUT"; then
-  timeout=30
-fi
-if test -z "$CLIGPT_TEMP"; then
-  temp=""
-fi
-if test -z "$CLIGPT_TOKEN"; then
-  token=""
-fi
-if test -z "$CLIGPT_MODEL"; then
-  model="gpt-4o"
-fi
+bootstrap() {
+  if test -z "$CLIGPT_PLATFORM_STORAGE"; then
+    if test -f README.md -a -f "./gpt" -a -d "./.git"; then
+      # probably in the development mode
+      CLIGPT_PLATFORM_STORAGE="./platforms"
+    else
+      CLIGPT_PLATFORM_STORAGE="~/.gpt"
+    fi
+  fi
 
-if test -z "$OPENAI_API_BASE"; then
-  OPENAI_API_BASE="https://api.openai.com/v1"
-fi
+  if test -z "$CLIGPT_CONTEXT_STORAGE"; then
+    CLIGPT_CONTEXT_STORAGE="."
+  fi
+  if test -z "$CLIGPT_TIMEOUT"; then
+    timeout=30
+  fi
+  if test -z "$CLIGPT_TEMP"; then
+    temp=""
+  fi
+  if test -z "$CLIGPT_TOKEN"; then
+    token=""
+  fi
+
+  load_platforms
+
+  if test -n "$OPENAI_API_BASE"; then
+    echo "WARNING: OPENAI_API_BASE is deprecated, use CLIGPT_API_BASE or CLIGPT_OPENAI_API_BASE instead" >&2
+    CLIGPT_OPENAI_API_BASE="$OPENAPI_API_BASE"
+  elif test -z "$CLIGPT_OPENAI_API_BASE"; then
+    CLIGPT_OPENAI_API_BASE="https://api.openai.com/v1"
+  fi
+
+  if test -z "$CLIGPT_OPENAI_MODEL"; then
+    CLIGPT_OPENAI_MODEL="gpt-4o"
+  fi
+
+  if test -n "$OPENAI_API_KEY"; then
+    echo "WARNING: OPENAI_API_KEY is deprecated, use CLIGPT_API_AUTHORIZATION instead" >&2
+    CLIGPT_API_AUTHORIZATION="Bearer $OPENAI_API_KEY"
+  fi
+
+  if test -z "$CLIGPT_MODEL"; then
+    model=""
+  fi
+}
 
 fallback_default() {
   if test -z "$1"; then
-    printf 'OpenAI spec'
+    printf 'platform specific value'
   else
     printf '%s' "$1"
   fi
@@ -99,25 +125,42 @@ usage() {
   echo "  $cmd_name [flags] [--] <prompt>..."
   echo "  cat <filename> | $cmd_name [flags] [--] [prompt]..."
   echo
-  echo "ENVIRONMENT VARIABLES"
-  echo "  OPENAI_API_BASE                  Host for OpenAI API (default to $(fallback_default "$OPENAI_API_BASE"))"
-  echo "  OPENAI_API_KEY                   API key for the given OpenAI base"
+  echo "PLATFORMS"
+  if test "$platforms" = "{}"; then
+    echo "  A list of platforms will be downloaded upon first run. Or simply run '$cmd_name --platforms' to start download now"
+  else
+    first_line='      \(.value.description)\n'
+    second_line='        Default API base URL : \(.value.base // "None specified") (can be set through CLIGPT_\(.value.key)_API_BASE)'
+    third_line='        Default model        : \(.value.model // "None specified") (can be set through CLIGPT_\(.value.key)_MODEL)'
+    echo "$platforms" | jq -rS "to_entries | map(\"  - \(.key)\n$first_line$second_line\n$third_line\") | join(\"\n\")"
+    echo
+    echo "  By default, each platform will be tested for a valid setup and get selected. Any platform required a remote call will not be tested and will be selected as a fallback."
+  fi
+
   echo
+  echo "ENVIRONMENT VARIABLES"
+  echo "  CLIGPT_API_BASE                  Base URL for LLM platform API (see PLATFORMS above for more details)"
+  echo "  CLIGPT_API_AUTHORIZATION         Set an Authorization header to the given value"
+  echo
+  echo "  CLIGPT_PLATFORM                  Platform to use, see the -p, --platform flag below"
+  echo "  CLIGPT_MODEL                     ID of the model to use, see the -m, --model flag below"
   echo "  CLIGPT_TEMP                      Sampling temperature, see the -T, --temperature flag below"
   echo "  CLIGPT_TOKEN                     Maximum number of tokens to generate in the completion, see the -t, --max-tokens flag below"
-  echo "  CLIGPT_MODEL                     ID of the model to use, see the -m, --model flag below"
   echo "  CLIGPT_TIMEOUT                   Maximum number of seconds before request timed out, see the --timeout flag below"
   echo "  CLIGPT_FORCE_COLOR               Set to non-empty to force rendering with colors"
   echo "  CLIGPT_CONTEXT_STORAGE           Directory to store/load the context file (default to current directory)"
+  echo "  CLIGPT_PLATFORM_STORAGE          Directory to store/load the supported platforms (default to $CLIGPT_PLATFORM_STORAGE)"
   echo
   echo "FLAGS"
   echo "  -h, --help                       Show this message"
+  echo "  -p, --platform=<name>            LLM platform to use (see PLATFORMS above for more details)"
+  echo "  -m, --model=<name>               ID of the model to use (default to $(fallback_default "$model"))"
   echo "  -T, --temperature=<temp>         Sampling temperature, higher is more random (default to $(fallback_default "$temp"))"
   echo "  -t, --max-tokens=<number>        Maximum number of tokens to generate in the completion (default to $(fallback_default "$token"))"
-  echo "  -m, --model=<name>               ID of the model to use (default to $(fallback_default "$model"))"
   echo "  -c, --context, --context=<file>  Use chat context (default to false), optionally use and store the context in the given file. The prompt from command line will be passed as a system message to the assistant, cannot be used in a pipe"
   echo "  --timeout=<number>               Maximum number of seconds before request timed out (default to "$(fallback_default "$timeout")")"
   echo "  --fancy[=<number>]               Use fancy UI with the given minimum padding (default to "$padding")"
+  echo "  --platforms                      List all available platforms (will start download supported platforms if no platform found)"
   echo "  --models                         List all available models"
   echo "  --uuid                           A unique ID for verifying the tool"
   echo "  --debug                          Print request and response on to standard error"
@@ -238,6 +281,34 @@ run_task() {
   return "$code"
 }
 
+load_platforms() {
+  platforms="{}"
+  for platform_path in "$CLIGPT_PLATFORM_STORAGE"/*.sh; do
+    platform="$(basename "$platform_path")"
+    if test "$platform" = '*.sh'; then
+      break
+    fi
+
+    . "$platform_path"
+    platform_data="$(platform_info)"
+    platforms="$(setitem "$platforms" "$(echo "$platform_data" | jq -r '.fn')" "$platform_data")"
+  done
+}
+
+download_platforms() {
+  if test "$platforms" != "{}"; then
+    return
+  fi
+
+  echo "Fetching platforms..."
+
+  load_platforms
+}
+
+initialize_platform() {
+  download_platforms
+}
+
 openai() {
   local path="$1"
   local body="$2"
@@ -313,6 +384,13 @@ additem() {
   printf '{"o":%s,"i":%s}' "$1" "$2" | jq -rc '.o + [.i]'
 }
 
+list_platforms() {
+  download_platforms
+
+  echo "Available platforms:"
+  echo "$platforms" | jq -r 'keys[] | "  - \(.)"'
+}
+
 models() {
   echo "Available models:"
   openai models '.data[] | "  - \(.id)\n      by: \(.owned_by)"'
@@ -363,6 +441,7 @@ main() {
   if tty -s >/dev/null 2>&1; then
     use_stdin=0
   fi
+  bootstrap
   local kind=""
   while test "$1" != ""; do
     local param
@@ -378,6 +457,10 @@ main() {
         ;;
       --zsh)
         setup_zsh
+        return
+        ;;
+      --platforms)
+        list_platforms
         return
         ;;
       --models)
@@ -497,10 +580,11 @@ main() {
     shift
   done
 
-  if test -z "$OPENAI_API_KEY"; then
-    echo "ERROR: OPENAI_API_KEY is required" >&2
-    return 1
-  fi
+  initialize_platform
+  # if test -z "$OPENAI_API_KEY"; then
+  #   echo "ERROR: OPENAI_API_KEY is required" >&2
+  #   return 1
+  # fi
 
   local prompt=""
   if test "$use_stdin" -eq 1; then
