@@ -113,10 +113,12 @@ bootstrap() {
 }
 
 fallback_default() {
-  if test -z "$1"; then
-    printf 'platform specific value'
-  else
+  if test -n "$1" -a "$1" != "$3"; then
     printf '%s' "$1"
+  elif test -n "$2"; then
+    printf '%s' "$2"
+  else
+    printf 'platform specific value'
   fi
 }
 
@@ -148,8 +150,8 @@ usage() {
   echo "  CLIGPT_TOKEN                     Maximum number of tokens to generate in the completion, see the -t, --max-tokens flag below"
   echo "  CLIGPT_TIMEOUT                   Maximum number of seconds before request timed out, see the --timeout flag below"
   echo "  CLIGPT_FORCE_COLOR               Set to non-empty to force rendering with colors"
-  echo "  CLIGPT_CONTEXT_STORAGE           Directory to store/load the context file (default to current directory)"
-  echo "  CLIGPT_PLATFORM_STORAGE          Directory to store/load the supported platforms (default to $CLIGPT_PLATFORM_STORAGE)"
+  echo "  CLIGPT_CONTEXT_STORAGE           Directory to store/load the context file (currently set to $(fallback_default "$CLIGPT_CONTEXT_STORAGE" "current directory" "."))"
+  echo "  CLIGPT_PLATFORM_STORAGE          Directory to store/load the supported platforms (currently set to $CLIGPT_PLATFORM_STORAGE)"
   echo
   echo "FLAGS"
   echo "  -h, --help                       Show this message"
