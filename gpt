@@ -292,14 +292,21 @@ download_platforms() {
   for platform_file in $(parsejson "$platform_files" 'keys[]'); do
     local platform_data="$(parsejson "$platform_files" ".[\"$platform_file\"]")"
     local platform_url="$(parsejson "$platform_data" '.download_url')"
-    printf "Downloading platform '%s' into '$CLIGPT_PLATFORM_STORAGE/$platform_file'..." "$platform_file" >&2
+
+    if ! test -d "$CLIGPT_PLATFORM_STORAGE"; then
+      printf "Creating a directory '%s'... " "$CLIGPT_PLATFORM_STORAGE" >&2
+      mkdir -p "$CLIGPT_PLATFORM_STORAGE"
+      printf 'done\n'
+    fi
+
+    printf "Downloading platform '%s' into '%s'... " "$platform_file" "$CLIGPT_PLATFORM_STORAGE/$platform_file" >&2
     curl -sSL "$platform_url" -o "$CLIGPT_PLATFORM_STORAGE/$platform_file" 1>/dev/null 2>&1
     if test "$?" -ne 0; then
-      printf ' failed\n' >&2
+      printf 'failed\n' >&2
       echo "ERROR: failed to download platform '$platform_file'" >&2
       return 1
     fi
-    printf ' done\n' >&2
+    printf 'done\n' >&2
   done
 
   load_platforms
@@ -386,7 +393,9 @@ additem() {
 }
 
 list_platforms() {
-  download_platforms
+  if ! download_platforms; then
+    return 1
+  fi
 
   echo "Available platforms:"
   parsejson "$platforms" 'keys[] | "  - \(.)"'
