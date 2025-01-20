@@ -90,26 +90,6 @@ bootstrap() {
   fi
 
   load_platforms
-
-  if test -n "$OPENAI_API_BASE"; then
-    echo "WARNING: OPENAI_API_BASE is deprecated, use CLIGPT_API_BASE or CLIGPT_OPENAI_API_BASE instead" >&2
-    CLIGPT_OPENAI_API_BASE="$OPENAPI_API_BASE"
-  elif test -z "$CLIGPT_OPENAI_API_BASE"; then
-    CLIGPT_OPENAI_API_BASE="https://api.openai.com/v1"
-  fi
-
-  if test -z "$CLIGPT_OPENAI_MODEL"; then
-    CLIGPT_OPENAI_MODEL="gpt-4o"
-  fi
-
-  if test -n "$OPENAI_API_KEY"; then
-    echo "WARNING: OPENAI_API_KEY is deprecated, use CLIGPT_API_AUTHORIZATION instead" >&2
-    CLIGPT_API_AUTHORIZATION="Bearer $OPENAI_API_KEY"
-  fi
-
-  if test -z "$CLIGPT_MODEL"; then
-    model=""
-  fi
 }
 
 fallback_default() {
@@ -286,8 +266,8 @@ run_task() {
 load_platforms() {
   platforms="{}"
   for platform_path in "$CLIGPT_PLATFORM_STORAGE"/*.sh; do
-    platform="$(basename "$platform_path")"
-    if test "$platform" = '*.sh'; then
+    platform_name="$(basename "$platform_path")"
+    if test "$platform_name" = '*.sh'; then
       break
     fi
 
@@ -302,13 +282,55 @@ download_platforms() {
     return
   fi
 
-  echo "Fetching platforms..."
+  echo "Fetching platforms..." >&2
+  # TODO
 
   load_platforms
+
+  if test "$platforms" = "{}"; then
+    echo "ERROR: no available platform found" >&2
+    return 1
+  fi
 }
 
-initialize_platform() {
-  download_platforms
+validate_platform() {
+  if ! download_platforms; then
+    return 2
+  fi
+
+  if test -n "$model"; then
+    CLIGPT_MODEL="$model"
+  fi
+
+  if test -z "$platform"; then
+    platform="$CLIGPT_PLATFORM"
+  fi
+  has_test=0
+  if test -z "$platform"; then
+    for platform_name in $(echo "$platforms" | jq -r 'keys[]'); do
+      if "$platform_name" test; then
+        platform="$platform_name"
+        has_test=1
+        echo "No platform specified, using '$platform' instead" >&2
+        break
+      fi
+    done
+  fi
+
+  if test -z "$platform"; then
+    echo "ERROR: no valid platform found" >&2
+    return 1
+  fi
+
+  platform_data="$(echo "$platforms" | jq -r ".[\"$platform\"].fn // \"\"")"
+  if test $? -ne 0 -o -z "$platform_data"; then
+    echo "ERROR: platform '$platform' is not a valid platform" >&2
+    return 1
+  fi
+
+  if test "$has_test" -eq 0 && ! "$platform" test; then
+    return 3
+  fi
 }
 
 openai() {
@@ -513,6 +535,13 @@ main() {
         fi
         token="$value"
         ;;
+      -p | --platform)
+        if test -z "$equal_sign"; then
+          echo "ERROR: a platform is required (perhaps missing an equal sign?)" >&2
+          return 1
+        fi
+        platform="$value"
+        ;;
       -m | --model)
         if test -z "$equal_sign"; then
           echo "ERROR: a model ID is required (perhaps missing an equal sign?)" >&2
@@ -582,11 +611,9 @@ main() {
     shift
   done
 
-  initialize_platform
-  # if test -z "$OPENAI_API_KEY"; then
-  #   echo "ERROR: OPENAI_API_KEY is required" >&2
-  #   return 1
-  # fi
+  if ! validate_platform; then
+    return 1
+  fi
 
   local prompt=""
   if test "$use_stdin" -eq 1; then
