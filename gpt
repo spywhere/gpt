@@ -3,6 +3,10 @@
 CLIGPT_PLATFORM_REPO="spywhere/gpt"
 CLIGPT_PLATFORM_PATH="platforms"
 
+if test -z "$HOME"; then
+  HOME="$(printf "%s" ~)"
+fi
+
 tempfile="$(mktemp)"
 cmd_name="$(basename "$0")"
 debug=0
@@ -75,7 +79,7 @@ bootstrap() {
       # probably in the development mode
       CLIGPT_PLATFORM_STORAGE="./platforms"
     else
-      CLIGPT_PLATFORM_STORAGE="~/.gpt"
+      CLIGPT_PLATFORM_STORAGE="$HOME/.gpt"
     fi
   fi
 
