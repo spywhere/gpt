@@ -8,21 +8,31 @@ ollama_initialize() {
   fi
 }
 
+ollama_test() {
+  curl -m "$CLIGPT_TIMEOUT" -X "GET" -sSL "$CLIGPT_OLLAMA_API_BASE/api/version" -H 'Content-Type: application/json' 1>/dev/null 2>&1
+}
+
 ollama() {
   ollama_initialize
   case "$1" in
     test)
+      ollama_test
+      ;;
+    models)
+      ;;
+    completions)
       ;;
     *)
       return 1
       ;;
   esac
+  return $?
 }
 
 platform_info() {
   ollama_initialize 2>/dev/null
 
-  info="{}"
+  local info="{}"
   info="$(setitem "$info" "description" "$(tojson "Use Ollama chat completions API")")"
   info="$(setitem "$info" "fn" "$(tojson "ollama")")"
   info="$(setitem "$info" "key" "$(tojson "OLLAMA")")"
