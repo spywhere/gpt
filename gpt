@@ -4,7 +4,7 @@ CLIGPT_PLATFORM_REPO="spywhere/gpt"
 CLIGPT_PLATFORM_PATH="platforms"
 
 if test -z "$HOME"; then
-  HOME="$(printf "%s" ~)"
+  HOME="$(printf '%s' ~)"
 fi
 
 tempfile="$(mktemp)"
@@ -437,7 +437,7 @@ http_json() {
 parsejson() {
   local value="$1"
   shift
-  printf '%s' "$value" | jq -r "$@"
+  printf '%s' "$value" | jq -rc "$@"
 }
 
 tojson() {
@@ -507,6 +507,83 @@ repeat() {
   done
 }
 
+multiline() {
+  local first_line="$(printf '%s' "$1" | sed "s/^$2//g")"
+  local lines="$first_line"
+
+  while true; do
+    printf '   %s...%s ' "$esc_green" "$esc_reset" >&2
+    if read -r line; then
+      if test -z "$line"; then
+        continue
+      fi
+
+      case "$line" in
+        *"$2")
+          local last_line="$(printf '%s' "$line" | sed "s/^$2//g")"
+          lines="$(printf '%s\n%s' "$lines" "$last_line")"
+          break
+          ;;
+        *)
+          lines="$(printf '%s\n%s' "$lines" "$line")"
+      esac
+    else
+      printf '\n' >&2
+      break
+    fi
+  done
+
+  printf '%s' "$lines"
+}
+
+command_help() {
+  echo 'Available commands:'
+  echo '  `, """                             Prefix the prompt with a backtick or triple quotes for multi-line prompt'
+  echo '  /help, /h, /?                      Print this help message'
+  echo '  /clear, /forget                    Clear the conversation'
+  echo '  /upload <file>, /attach <file>     Attach a file along with the next prompt'
+  echo '  /system <prompt>                   Insert system prompt into the conversation'
+  echo '  /regenerate, /regen                Regenerate the last response'
+  echo '  /undo                              Remove the last prompt and response'
+  echo '  /dump [context]                    Print the raw conversation or save into a given context file'
+  echo '  /temperature [temp], /temp [temp]  Set a new temperature value or reset to default'
+  echo '  /token [token]                     Set a new token size or reset to default'
+  echo '  /timeout <timeout>                 Set a new timeout value'
+  echo '  /info                              Print the currently running platform, model'
+  echo '  /exit, /quit, /bye                 End the conversation'
+}
+
+_remove_from() {
+  parsejson "$2" "del(.[range(index(map(select($3))|$1);index(last)+1)])"
+}
+
+remove_from_first() {
+  _remove_from first "$@"
+}
+
+remove_from_last() {
+  _remove_from last "$@"
+}
+
+confirm() {
+  printf '%s [y/N] ' "$1"
+  while true; do
+    if read -r line; then
+      case "$line" in
+        y|Y)
+          return 0
+          ;;
+        *)
+          return 1
+          ;;
+      esac
+    else
+      printf '\n'
+      return 2
+    fi
+  done
+}
+
 main() {
   local use_stdin=1
   if tty -s >/dev/null 2>&1; then
@@ -515,12 +592,9 @@ main() {
   bootstrap
   local kind=""
   while test "$1" != ""; do
-    local param
-    param="$(printf "%s" "$1" | sed 's/=.*//g')"
-    local value
-    value="$(printf "%s" "$1" | sed 's/^[^=]*=//g')"
-    local equal_sign
-    equal_sign="$(printf "%s" "$1" | sed 's/[^=]//g')"
+    local param="$(printf '%s' "$1" | sed 's/=.*//g')"
+    local value="$(printf '%s' "$1" | sed 's/^[^=]*=//g')"
+    local equal_sign="$(printf '%s' "$1" | sed 's/[^=]//g')"
     case "$param" in
       -h | --help)
         usage
@@ -708,16 +782,141 @@ main() {
   fi
 
   while true; do
+    local skip=0
+    local current_item='{"role":"user"}'
     if test -n "$context"; then
       draw_ui
       printf '%s[User]%s ' "$esc_green" "$esc_reset"
-      if read -r line && test -n "$line"; then
+      if read -r line; then
         restore_ui
+        if test -z "$line"; then
+          break
+        fi
+
+        case "$line" in
+          /*)
+            local command="$(printf '%s' "$line" | sed 's/ .*//g')"
+            local value="$(printf '%s' "$line" | sed 's/^[^ ]* //g')"
+            local space_symbol="$(printf '%s' "$line" | sed 's/[^ ]//g')"
+            if test -z "$space_symbol"; then
+              value=""
+            fi
+
+            case "$command" in
+              /dump)
+                if test -z "$value"; then
+                  echo "$prompts" >&2
+                else
+                  if test -f "$CLIGPT_CONTEXT_STORAGE/$value"; then
+                    if confirm "Context '$value' already exists, overwrite?"; then
+                      context="$(realpath "$CLIGPT_CONTEXT_STORAGE/$value")"
+                    else
+                      continue
+                    fi
+                  else
+                    context="$(realpath "$CLIGPT_CONTEXT_STORAGE")/$value"
+                  fi
+
+                  echo "Context will be stored in '$context'" >&2
+                  printf '%s' "$prompts" > "$context"
+                fi
+                ;;
+              /upload|/attach)
+                case "$value" in
+                  \~/*)
+                    value="$(printf '%s' "$HOME")/$(printf '%s' "$value" | sed 's/^~\///g')"
+                    ;;
+                  *)
+                    ;;
+                esac
+
+                if test -z "$value"; then
+                  echo "ERROR: a file is required" >&2
+                elif test -f "$value"; then
+                  echo "File '$value' will be attached with the next prompt" >&2
+                  # TODO: Attach a file
+                else
+                  echo "ERROR: file '$value' is not exists" >&2
+                fi
+                ;;
+              /system)
+                # TODO: Add system prompt
+                ;;
+              /undo)
+                prompts="$(remove_from_last "$prompts" '.role=="user"')"
+                ;;
+              /regenerate|/regen)
+                prompts="$(remove_from_last "$prompts" '.role=="assistant"')"
+                skip=1
+                ;;
+              /clear|/forget)
+                prompts="$(remove_from_first "$prompts" '.role=="user"')"
+                ;;
+              /timeout)
+                if test -z "$value"; then
+                  echo "ERROR: a timeout value is required" >&2
+                else
+                  CLIGPT_TIMEOUT="$value"
+                fi
+                ;;
+              /temperature|/temp)
+                if test -z "$value"; then
+                  CLIGPT_TEMP=""
+                  echo "Temperature value has been reset to the default value" >&2
+                else
+                  CLIGPT_TEMP="$value"
+                fi
+                ;;
+              /token)
+                if test -z "$value"; then
+                  CLIGPT_TOKEN=""
+                  echo "Token size has been reset to the default value" >&2
+                else
+                  CLIGPT_TOKEN="$value"
+                fi
+                ;;
+              /info)
+                echo "Platform: $CLIGPT_PLATFORM" >&2
+                echo "Model: $CLIGPT_MODEL" >&2
+                echo "Timeout: ${CLIGPT_TIMEOUT}s" >&2
+                if test -n "$CLIGPT_TEMP"; then
+                  echo "Temperature: $CLIGPT_TEMP" >&2
+                fi
+                if test -n "$CLIGPT_TOKEN"; then
+                  echo "Max tokens: $CLIGPT_TOKEN" >&2
+                fi
+                ;;
+              /help|/h|/\?)
+                command_help >&2
+                ;;
+              /exit|/quit|/bye)
+                break
+                ;;
+              *)
+                echo "ERROR: a command '$command' is not a valid command. Try /help to see available commands" >&2
+                ;;
+            esac
+
+            if test "$skip" -eq 0; then
+              continue
+            fi
+            ;;
+          '`'*)
+            line="$(multiline "$line" '`')"
+            ;;
+          '"""'*)
+            line="$(multiline "$line" '"""')"
+            ;;
+          *)
+            ;;
+        esac
+
         if is_fancy; then
           printf '%s[User]%s %s\n' "$esc_green" "$esc_reset" "$line"
         fi
-        prompts="$(additem "$prompts" "$(printf '{"role":"user","content":%s}' "$(tojson "$line")")")"
+        current_item="$(setitem "$current_item" content "$(tojson "$line")")"
       else
+        printf '\n'
         restore_ui
         break
       fi
@@ -726,7 +925,11 @@ main() {
         prompts="$(additem "$prompts" "$(printf '{"role":"system","content":%s}' "$(tojson "$(prompt_prefix "$kind")")")")"
         prompts="$(additional_prompts "$kind" "$prompts")"
       fi
-      prompts="$(additem "$prompts" "$(printf '{"role":"user","content":%s}' "$(tojson "$prompt")")")"
+      current_item="$(setitem "$current_item" content "$(tojson "$prompt")")"
+    fi
+
+    if test "$skip" -eq 0; then
+      prompts="$(additem "$prompts" "$current_item")"
     fi
 
     draw_ui
