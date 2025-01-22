@@ -362,6 +362,78 @@ handle_status() {
   return "$status"
 }
 
+handle_json_response() {
+  local response="$1"
+  local error_message="$2"
+  local error_type="$3"
+  local errmsg
+  errmsg="$(printf '%s' "$response" | jq -er "$error_message")"
+  if test "$?" -eq 0; then
+    restore_ui
+    if test -z "$error_type" -o "$error_type" = '-'; then
+      printf 'ERROR: %s\n' "$errmsg" >&2
+    else
+      printf 'ERROR: [%s] %s\n' "$(parsejson "$response" "$error_type")" "$errmsg" >&2
+    fi
+    return 1
+  fi
+  return 0
+}
+
+http_json() {
+  local base="$1"
+  local error_message="$2"
+  local error_type="$3"
+  shift
+  shift
+  shift
+
+  local path="$1"
+  local body="$2"
+  local filter="$3"
+  local method="POST"
+  if test -z "$3"; then
+    body=""
+    filter="$2"
+    method="GET"
+  elif test "$debug" -ge 1; then
+    printf 'Req[%s]: %s\n' "$path" "$body" >&2
+  fi
+  if test "$debug" -eq 2; then
+    return 4
+  fi
+  task() {
+    send_req() {
+      curl -m "$CLIGPT_TIMEOUT" -X "$method" -d "$body" -sSL "$base/$path" -H 'Content-Type: application/json' "$@" 2>/dev/null
+    }
+    if test -z "$CLIGPT_API_AUTHORIZATION"; then
+      send_req
+    else
+      send_req -H "Authorization: $CLIGPT_API_AUTHORIZATION"
+    fi
+  }
+  local response
+  response="$(run_task task)"
+  if test $? -ne 0; then
+    return 1
+  fi
+
+  if test "$debug" -ge 1; then
+    printf 'Res[%s]: %s\n' "$path" "$response" >&2
+  fi
+
+  parsejson "$response" '.' >/dev/null 2>&1
+  if test $? -ne 0; then
+    return 2
+  fi
+
+  if ! handle_json_response "$response" "$error_message" "$error_type"; then
+    return 3
+  fi
+
+  parsejson "$response" "$filter"
+}
+
 parsejson() {
   local value="$1"
   shift

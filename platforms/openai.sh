@@ -29,56 +29,8 @@ openai_test() {
   fi
 }
 
-handle_openai_response() {
-  local response="$1"
-  local errmsg
-  errmsg="$(printf '%s' "$response" | jq -er '.error.message')"
-  if test "$?" -eq 0; then
-    restore_ui
-    printf 'ERROR: [%s] %s\n' "$(parsejson "$response" '.error.type')" "$errmsg" >&2
-    return 1
-  fi
-  return 0
-}
-
 openai_api() {
-  local path="$1"
-  local body="$2"
-  local filter="$3"
-  local method="POST"
-  if test -z "$3"; then
-    body=""
-    filter="$2"
-    method="GET"
-  elif test "$debug" -ge 1; then
-    printf 'Req[%s]: %s\n' "$path" "$body" >&2
-  fi
-  if test "$debug" -eq 2; then
-    return 4
-  fi
-  task() {
-    curl -m "$CLIGPT_TIMEOUT" -X "$method" -d "$body" -sSL "$CLIGPT_OPENAI_API_BASE/$path" -H 'Content-Type: application/json' -H "Authorization: $CLIGPT_API_AUTHORIZATION" 2>/dev/null
-  }
-  local response
-  response="$(run_task task)"
-  if test $? -ne 0; then
-    return 1
-  fi
-
-  if test "$debug" -ge 1; then
-    printf 'Res[%s]: %s\n' "$path" "$response" >&2
-  fi
-
-  parsejson "$response" '.' >/dev/null 2>&1
-  if test $? -ne 0; then
-    return 2
-  fi
-
-  if ! handle_openai_response "$response"; then
-    return 3
-  fi
-
-  parsejson "$response" "$filter"
+  http_json "$CLIGPT_OPENAI_API_BASE" '.error.message' '.error.type' "$@"
 }
 
 openai() {
