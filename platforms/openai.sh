@@ -46,8 +46,8 @@ openai() {
       shift
 
       local prompts="$1"
-
       local body="{}"
+
       if test -n "$CLIGPT_OPENAI_MODEL"; then
         body="$(setitem "$body" "model" "$(tojson "$CLIGPT_OPENAI_MODEL")")"
       fi

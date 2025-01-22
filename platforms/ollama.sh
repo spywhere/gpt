@@ -33,7 +33,6 @@ ollama() {
       shift
 
       local prompts="$1"
-
       local body="{}"
 
       body="$(setitem "$body" "stream" "false")"
@@ -41,11 +40,18 @@ ollama() {
       if test -n "$CLIGPT_OLLAMA_MODEL"; then
         body="$(setitem "$body" "model" "$(tojson "$CLIGPT_OLLAMA_MODEL")")"
       fi
-      if test -n "$CLIGPT_TOKEN"; then
-        body="$(setitem "$body" "max_tokens" "$CLIGPT_TOKEN")"
-      fi
-      if test -n "$CLIGPT_TEMP"; then
-        body="$(setitem "$body" "temperature" "$CLIGPT_TEMP")"
+
+      if test -n "$CLIGPT_TOKEN" -o -n "$CLIGPT_TEMP"; then
+        local options="{}"
+
+        if test -n "$CLIGPT_TOKEN"; then
+          options="$(setitem "$options" "num_predict" "$CLIGPT_TOKEN")"
+        fi
+        if test -n "$CLIGPT_TEMP"; then
+          options="$(setitem "$options" "temperature" "$CLIGPT_TEMP")"
+        fi
+
+        body="$(setitem "$body" "options" "$options")"
       fi
 
       body="$(setitem "$body" "messages" "$prompts")"
