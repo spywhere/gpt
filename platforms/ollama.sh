@@ -65,7 +65,7 @@ ollama_api() {
 }
 
 ollama_test() {
-  curl -m "$CLIGPT_TIMEOUT" -X "GET" -sSL "$CLIGPT_OLLAMA_API_BASE/api/version" -H 'Content-Type: application/json' 1>/dev/null 2>&1
+  ollama_api api/version '.' 1>/dev/null
 }
 
 ollama() {
