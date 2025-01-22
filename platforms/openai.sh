@@ -29,6 +29,18 @@ openai_test() {
   fi
 }
 
+handle_openai_response() {
+  local response="$1"
+  local errmsg
+  errmsg="$(printf '%s' "$response" | jq -er '.error.message')"
+  if test "$?" -eq 0; then
+    restore_ui
+    printf 'ERROR: [%s] %s\n' "$(parsejson "$response" '.error.type')" "$errmsg" >&2
+    return 1
+  fi
+  return 0
+}
+
 openai_api() {
   local path="$1"
   local body="$2"
@@ -45,7 +57,7 @@ openai_api() {
     return 4
   fi
   task() {
-    curl -m "$CLIGPT_TIMEOUT" -X "$method" -d "$body" -sSL "$CLIGPT_OPENAI_API_BASE/$path" -H 'Content-Type: application/json' -H "Authorization: Bearer $OPENAI_API_KEY" 2>/dev/null
+    curl -m "$CLIGPT_TIMEOUT" -X "$method" -d "$body" -sSL "$CLIGPT_OPENAI_API_BASE/$path" -H 'Content-Type: application/json' -H "Authorization: $CLIGPT_API_AUTHORIZATION" 2>/dev/null
   }
   local response
   response="$(run_task task)"
@@ -62,7 +74,7 @@ openai_api() {
     return 2
   fi
 
-  if ! handle_gpt_response "$response"; then
+  if ! handle_openai_response "$response"; then
     return 3
   fi
 

@@ -218,18 +218,6 @@ additional_prompts() {
   esac
 }
 
-handle_gpt_response() {
-  local response="$1"
-  local errmsg
-  errmsg="$(printf '%s' "$response" | jq -er '.error.message')"
-  if test "$?" -eq 0; then
-    restore_ui
-    printf 'ERROR: [%s] %s\n' "$(parsejson "$response" '.error.type')" "$errmsg" >&2
-    return 1
-  fi
-  return 0
-}
-
 loader() {
   local pid=$1
   local anim=".  .. ... ..  .   "
@@ -475,6 +463,9 @@ main() {
         return
         ;;
       --models)
+        if ! validate_platform; then
+          return 1
+        fi
         models
         return
         ;;

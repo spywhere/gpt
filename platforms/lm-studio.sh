@@ -20,7 +20,7 @@ lmstudio() {
       ;;
     models)
       ;;
-    completions)
+    chat/completions)
       ;;
     *)
       return 1
