@@ -6,10 +6,18 @@ lmstudio_initialize() {
   elif test -z "$CLIGPT_LMSTUDIO_API_BASE"; then
     CLIGPT_LMSTUDIO_API_BASE="http://localhost:1234"
   fi
+
+  if test -n "$CLIGPT_MODEL"; then
+    CLIGPT_LMSTUDIO_MODEL="$CLIGPT_MODEL"
+  fi
+}
+
+lmstudio_api() {
+  http_json "$CLIGPT_LMSTUDIO_API_BASE" '.error.message' '.error.type' "$@"
 }
 
 lmstudio_test() {
-  curl -m "$CLIGPT_TIMEOUT" -X "GET" -sSL "$CLIGPT_LMSTUDIO_API_BASE/api/v0/models" -H 'Content-Type: application/json' 1>/dev/null 2>&1
+  lmstudio_api v1/models '.' 1>/dev/null
 }
 
 lmstudio() {
@@ -19,8 +27,29 @@ lmstudio() {
       lmstudio_test
       ;;
     models)
+      lmstudio_api v1/models '.data | map({ id: .id, by: .owned_by })'
       ;;
     chat/completions)
+      shift
+
+      local prompts="$1"
+      local body="{}"
+
+      body="$(setitem "$body" "stream" "false")"
+
+      if test -n "$CLIGPT_LMSTUDIO_MODEL"; then
+        body="$(setitem "$body" "model" "$(tojson "$CLIGPT_LMSTUDIO_MODEL")")"
+      fi
+      if test -n "$CLIGPT_TOKEN"; then
+        body="$(setitem "$body" "max_tokens" "$CLIGPT_TOKEN")"
+      fi
+      if test -n "$CLIGPT_TEMP"; then
+        body="$(setitem "$body" "temperature" "$CLIGPT_TEMP")"
+      fi
+
+      body="$(setitem "$body" "messages" "$prompts")"
+
+      lmstudio_api v1/chat/completions "$body" '.choices[] | { role: .message.role, content: .message.content }'
       ;;
     *)
       return 1
