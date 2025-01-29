@@ -20,6 +20,10 @@ lmstudio_test() {
   lmstudio_api v1/models '.' 1>/dev/null
 }
 
+lmstudio_message() {
+  printf '{"role":"%s","content":%s}' "$1" "$(tojson "$2")"
+}
+
 lmstudio() {
   lmstudio_initialize
   case "$1" in
@@ -28,6 +32,9 @@ lmstudio() {
       ;;
     models)
       lmstudio_api v1/models '.data | map({ id: .id, by: .owned_by })'
+      ;;
+    message)
+      lmstudio_message "$@"
       ;;
     chat/completions)
       shift

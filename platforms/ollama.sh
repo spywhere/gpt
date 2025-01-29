@@ -20,6 +20,10 @@ ollama_test() {
   ollama_api api/version '.' 1>/dev/null
 }
 
+ollama_message() {
+  printf '{"role":"%s","content":%s}' "$1" "$(tojson "$2")"
+}
+
 ollama() {
   ollama_initialize
   case "$1" in
@@ -28,6 +32,9 @@ ollama() {
       ;;
     models)
       ollama_api api/tags '.models | map({ id: .name, by: .details.family })'
+      ;;
+    message)
+      ollama_message "$@"
       ;;
     chat/completions)
       shift
