@@ -20,8 +20,8 @@ ollama_test() {
   ollama_api api/version '.' 1>/dev/null
 }
 
-ollama_message() {
-  printf '{"role":"%s","content":%s}' "$1" "$(tojson "$2")"
+ollama_messages() {
+  printf '[{"role":"%s","content":%s}]' "$1" "$(tojson "$2")"
 }
 
 ollama() {
@@ -33,8 +33,9 @@ ollama() {
     models)
       ollama_api api/tags '.models | map({ id: .name, by: .details.family })'
       ;;
-    message)
-      ollama_message "$@"
+    messages)
+      shift
+      ollama_messages "$@"
       ;;
     chat/completions)
       shift

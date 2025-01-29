@@ -20,8 +20,8 @@ lmstudio_test() {
   lmstudio_api v1/models '.' 1>/dev/null
 }
 
-lmstudio_message() {
-  printf '{"role":"%s","content":%s}' "$1" "$(tojson "$2")"
+lmstudio_messages() {
+  printf '[{"role":"%s","content":%s}]' "$1" "$(tojson "$2")"
 }
 
 lmstudio() {
@@ -33,8 +33,9 @@ lmstudio() {
     models)
       lmstudio_api v1/models '.data | map({ id: .id, by: .owned_by })'
       ;;
-    message)
-      lmstudio_message "$@"
+    messages)
+      shift
+      lmstudio_messages "$@"
       ;;
     chat/completions)
       shift

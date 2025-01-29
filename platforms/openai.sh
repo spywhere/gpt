@@ -33,8 +33,8 @@ openai_api() {
   http_json "$CLIGPT_OPENAI_API_BASE" '.error.message' '.error.type' "$@"
 }
 
-openai_message() {
-  printf '{"role":"%s","content":%s}' "$1" "$(tojson "$2")"
+openai_messages() {
+  printf '[{"role":"%s","content":%s}]' "$1" "$(tojson "$2")"
 }
 
 openai() {
@@ -46,8 +46,9 @@ openai() {
     models)
       openai_api models '.data | map({ id: .id, by: .owned_by })'
       ;;
-    message)
-      openai_message "$@"
+    messages)
+      shift
+      openai_messages "$@"
       ;;
     chat/completions)
       shift

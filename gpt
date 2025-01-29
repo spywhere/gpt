@@ -194,21 +194,21 @@ copilot_examples() {
 
   local command='find -name "*.ts" | grep -v node_modules'
   local additional
-  additional="$("$CLIGPT_PLATFORM" message user "$command")"
-  prompts="$(additem "$prompts" "$additional")"
+  additional="$("$CLIGPT_PLATFORM" messages user "$command")"
+  prompts="$(additems "$prompts" "$additional")"
   # shellcheck disable=SC2016
   result="$(printf -- '--- Command ---\n\n%s\n\n--- Explanation ---\n\n- %s\n  - %s\n- %s\n  - %s' "$command" '`find` is used to list files.' '`-name "*.ts"` stipulates that we search for files ending in `.ts`.' '`| grep` means we pass that list of files to `grep` which filters the list.' '`-v node_modules` means we exclude all files containing node_modules in its path.')"
-  additional="$("$CLIGPT_PLATFORM" message assistant "$result")"
-  prompts="$(additem "$prompts" "$additional")"
+  additional="$("$CLIGPT_PLATFORM" messages assistant "$result")"
+  prompts="$(additems "$prompts" "$additional")"
 
   # shellcheck disable=SC2016
   command="$(printf '%s\n  %s\n  %s\n%s' 'for file in $(find -name "*.py"); do' 'echo "$file";' 'wc -l $file;' 'done')"
-  additional="$("$CLIGPT_PLATFORM" message user "$command")"
-  prompts="$(additem "$prompts" "$additional")"
+  additional="$("$CLIGPT_PLATFORM" messages user "$command")"
+  prompts="$(additems "$prompts" "$additional")"
   # shellcheck disable=SC2016
   result="$(printf -- '--- Command ---\n\n%s\n\n--- Explanation ---\n\n- %s\n  - %s\n    - %s\n- %s\n  - %s\n  - %s\n    - %s' "$command" 'The for loop iterates over a list of items and executes its body for each, using the loop variable `$file`.' 'The list of items is the output of a sub-call to `find` which is used to list files.' '`-name "*.py"` stipulates that we search for files ending in `.py`.' 'The loop body executes two commands for each file:' '`echo "$file"` will print the name of the current file to the terminal.' '`wc` is used to count the number of lines in the current file.' '`-l` specifies that we only want the line count, not the word or character count.')"
-  additional="$("$CLIGPT_PLATFORM" message assistant "$result")"
-  prompts="$(additem "$prompts" "$additional")"
+  additional="$("$CLIGPT_PLATFORM" messages assistant "$result")"
+  prompts="$(additems "$prompts" "$additional")"
 
   printf '%s' "$prompts"
 }
@@ -453,8 +453,12 @@ setitem() {
   printf '{"o":%s,"k":%s,"v":%s}' "$1" "$(tojson "$2")" "$3" | jq -rc '.o[.k] = .v | .o'
 }
 
+additems() {
+  printf '{"o":%s,"i":%s}' "$1" "$2" | jq -rc '.o + .i'
+}
+
 additem() {
-  printf '{"o":%s,"i":%s}' "$1" "$2" | jq -rc '.o + [.i]'
+  additems "$1" "[$2]"
 }
 
 list_platforms() {
@@ -780,15 +784,15 @@ main() {
         return 1
       fi
     elif test -n "$prompt"; then
-      local data="$("$CLIGPT_PLATFORM" message system "$prompt")"
+      local data="$("$CLIGPT_PLATFORM" messages system "$prompt")"
+      prompts="$(additems "$prompts" "$data")"
       printf '%s[System]%s %s\n' "$esc_blue" "$esc_reset" "$prompt"
-      prompts="$(additem "$prompts" "$data")"
     fi
   fi
 
   while true; do
     local skip=0
-    local current_item=""
+    local current_items=""
     if test -n "$context"; then
       draw_ui
       printf '%s[User]%s ' "$esc_green" "$esc_reset"
@@ -919,7 +923,7 @@ main() {
         if is_fancy; then
           printf '%s[User]%s %s\n' "$esc_green" "$esc_reset" "$line"
         fi
-        current_item="$("$CLIGPT_PLATFORM" message user "$line")"
+        current_items="$("$CLIGPT_PLATFORM" messages user "$line")"
       else
         printf '\n'
         restore_ui
@@ -927,15 +931,15 @@ main() {
       fi
     else
       if test -n "$kind"; then
-        local prefix="$("$CLIGPT_PLATFORM" message system "$(prompt_prefix "$kind")")"
+        local prefix="$("$CLIGPT_PLATFORM" messages system "$(prompt_prefix "$kind")")"
         prompts="$(additem "$prompts" "$prefix")"
         prompts="$(additional_prompts "$kind" "$prompts")"
       fi
-      current_item="$("$CLIGPT_PLATFORM" message user "$prompt")"
+      current_items="$("$CLIGPT_PLATFORM" messages user "$prompt")"
     fi
 
-    if test "$skip" -eq 0 -a -n "$current_item"; then
-      prompts="$(additem "$prompts" "$current_item")"
+    if test "$skip" -eq 0 -a -n "$current_items"; then
+      prompts="$(additems "$prompts" "$current_items")"
     fi
 
     draw_ui
