@@ -1,19 +1,11 @@
 #!/bin/bash
 
 openai_initialize() {
-  if test -n "$CLIGPT_API_BASE"; then
-    CLIGPT_OPENAI_API_BASE="$CLIGPT_API_BASE"
-  elif test -n "$OPENAI_API_BASE"; then
-    echo "WARNING: OPENAI_API_BASE is deprecated, use CLIGPT_API_BASE or CLIGPT_OPENAI_API_BASE instead" >&2
-    CLIGPT_OPENAI_API_BASE="$OPENAPI_API_BASE"
-  elif test -z "$CLIGPT_OPENAI_API_BASE"; then
-    CLIGPT_OPENAI_API_BASE="https://api.openai.com/v1"
-  fi
-
-  if test -n "$CLIGPT_MODEL"; then
-    CLIGPT_OPENAI_MODEL="$CLIGPT_MODEL"
-  elif test -z "$CLIGPT_OPENAI_MODEL"; then
-    CLIGPT_OPENAI_MODEL="gpt-4o"
+  if test -n "$OPENAI_API_BASE"; then
+    echo "WARNING: OPENAI_API_BASE is deprecated, use CLIGPT_API_BASE instead" >&2
+    CLIGPT_API_BASE="$OPENAPI_API_BASE"
+  elif test -z "$CLIGPT_API_BASE"; then
+    CLIGPT_API_BASE="https://api.openai.com/v1"
   fi
 
   if test -n "$OPENAI_API_KEY"; then
@@ -52,7 +44,7 @@ openai_test() {
 }
 
 openai_api() {
-  http_json "$CLIGPT_OPENAI_API_BASE" '.error.message' '.error.type' "$@"
+  http_json "$CLIGPT_API_BASE" '.error.message' '.error.type' "$@"
 }
 
 openai_messages() {
@@ -97,8 +89,8 @@ openai() {
 
       body="$(setitem "$body" "stream" "false")"
 
-      if test -n "$CLIGPT_OPENAI_MODEL"; then
-        body="$(setitem "$body" "model" "$(tojson "$CLIGPT_OPENAI_MODEL")")"
+      if test -n "$CLIGPT_MODEL"; then
+        body="$(setitem "$body" "model" "$(tojson "$CLIGPT_MODEL")")"
       fi
       if test -n "$CLIGPT_TOKEN"; then
         body="$(setitem "$body" "max_tokens" "$CLIGPT_TOKEN")"
@@ -124,9 +116,7 @@ platform_info() {
   local info="{}"
   info="$(setitem "$info" "description" "$(tojson "Use OpenAI chat completions API, required a valid API key to be set through CLIGPT_API_AUTHORIZATION")")"
   info="$(setitem "$info" "fn" "$(tojson "openai")")"
-  info="$(setitem "$info" "key" "$(tojson "OPENAI")")"
-  info="$(setitem "$info" "model" "$(tojson "$CLIGPT_OPENAI_MODEL")")"
-  info="$(setitem "$info" "base" "$(tojson "$CLIGPT_OPENAI_API_BASE")")"
+  info="$(setitem "$info" "base" "$(tojson "$CLIGPT_API_BASE")")"
 
   printf '%s' "$info"
 }

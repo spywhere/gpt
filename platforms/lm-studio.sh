@@ -2,18 +2,18 @@
 
 lmstudio_initialize() {
   if test -n "$CLIGPT_API_BASE"; then
-    CLIGPT_LMSTUDIO_API_BASE="$CLIGPT_API_BASE"
-  elif test -z "$CLIGPT_LMSTUDIO_API_BASE"; then
-    CLIGPT_LMSTUDIO_API_BASE="http://localhost:1234"
+    CLIGPT_API_BASE="$CLIGPT_API_BASE"
+  elif test -z "$CLIGPT_API_BASE"; then
+    CLIGPT_API_BASE="http://localhost:1234"
   fi
 
   if test -n "$CLIGPT_MODEL"; then
-    CLIGPT_LMSTUDIO_MODEL="$CLIGPT_MODEL"
+    CLIGPT_MODEL="$CLIGPT_MODEL"
   fi
 }
 
 lmstudio_api() {
-  http_json "$CLIGPT_LMSTUDIO_API_BASE" '.error.message' '.error.type' "$@"
+  http_json "$CLIGPT_API_BASE" '.error.message' '.error.type' "$@"
 }
 
 lmstudio_mime() {
@@ -84,8 +84,8 @@ lmstudio() {
 
       body="$(setitem "$body" "stream" "false")"
 
-      if test -n "$CLIGPT_LMSTUDIO_MODEL"; then
-        body="$(setitem "$body" "model" "$(tojson "$CLIGPT_LMSTUDIO_MODEL")")"
+      if test -n "$CLIGPT_MODEL"; then
+        body="$(setitem "$body" "model" "$(tojson "$CLIGPT_MODEL")")"
       fi
       if test -n "$CLIGPT_TOKEN"; then
         body="$(setitem "$body" "max_tokens" "$CLIGPT_TOKEN")"
@@ -111,8 +111,7 @@ platform_info() {
   local info="{}"
   info="$(setitem "$info" "description" "$(tojson "Use LM Studio chat completions API")")"
   info="$(setitem "$info" "fn" "$(tojson "lmstudio")")"
-  info="$(setitem "$info" "key" "$(tojson "LMSTUDIO")")"
-  info="$(setitem "$info" "base" "$(tojson "$CLIGPT_LMSTUDIO_API_BASE")")"
+  info="$(setitem "$info" "base" "$(tojson "$CLIGPT_API_BASE")")"
 
   printf '%s' "$info"
 }

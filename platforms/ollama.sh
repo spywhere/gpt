@@ -1,19 +1,13 @@
 #!/bin/bash
 
 ollama_initialize() {
-  if test -n "$CLIGPT_API_BASE"; then
-    CLIGPT_OLLAMA_API_BASE="$CLIGPT_API_BASE"
-  elif test -z "$CLIGPT_OLLAMA_API_BASE"; then
-    CLIGPT_OLLAMA_API_BASE="http://localhost:11434"
-  fi
-
-  if test -n "$CLIGPT_MODEL"; then
-    CLIGPT_OLLAMA_MODEL="$CLIGPT_MODEL"
+  if test -z "$CLIGPT_API_BASE"; then
+    CLIGPT_API_BASE="http://localhost:11434"
   fi
 }
 
 ollama_api() {
-  http_json "$CLIGPT_OLLAMA_API_BASE" '.error' - "$@"
+  http_json "$CLIGPT_API_BASE" '.error' - "$@"
 }
 
 ollama_test() {
@@ -49,8 +43,8 @@ ollama() {
 
       body="$(setitem "$body" "stream" "false")"
 
-      if test -n "$CLIGPT_OLLAMA_MODEL"; then
-        body="$(setitem "$body" "model" "$(tojson "$CLIGPT_OLLAMA_MODEL")")"
+      if test -n "$CLIGPT_MODEL"; then
+        body="$(setitem "$body" "model" "$(tojson "$CLIGPT_MODEL")")"
       fi
 
       if test -n "$CLIGPT_TOKEN" -o -n "$CLIGPT_TEMP"; then
@@ -83,8 +77,7 @@ platform_info() {
   local info="{}"
   info="$(setitem "$info" "description" "$(tojson "Use Ollama chat completions API")")"
   info="$(setitem "$info" "fn" "$(tojson "ollama")")"
-  info="$(setitem "$info" "key" "$(tojson "OLLAMA")")"
-  info="$(setitem "$info" "base" "$(tojson "$CLIGPT_OLLAMA_API_BASE")")"
+  info="$(setitem "$info" "base" "$(tojson "$CLIGPT_API_BASE")")"
 
   printf '%s' "$info"
 }

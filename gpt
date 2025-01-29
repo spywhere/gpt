@@ -113,16 +113,15 @@ usage() {
     echo "  A list of platforms will be downloaded upon first run. Or simply run '$cmd_name --platforms' to start download now"
   else
     first_line='      \(.value.description)\n'
-    second_line='        Default API base URL : \(.value.base // "None specified") (can be set through CLIGPT_\(.value.key)_API_BASE)'
-    third_line='        Default model        : \(.value.model // "None specified") (can be set through CLIGPT_\(.value.key)_MODEL)'
-    parsejson "$platforms" -S "to_entries | map(\"  - \(.key)\n$first_line$second_line\n$third_line\") | join(\"\n\")"
+    second_line='        Default API base URL : \(.value.base // "None specified")'
+    parsejson "$platforms" -S "to_entries | map(\"  - \(.key)\n$first_line$second_line\") | join(\"\n\")"
     echo
     echo "  By default, each platform will be tested for a valid setup and get selected. Any platform required a remote call will not be tested and will be selected as a fallback."
   fi
 
   echo
   echo "ENVIRONMENT VARIABLES"
-  echo "  CLIGPT_API_BASE                  Base URL for LLM platform API (see PLATFORMS above for more details)"
+  echo "  CLIGPT_API_BASE                  Base URL for LLM platform API (override platform specific API base URL)"
   echo "  CLIGPT_API_AUTHORIZATION         Set an Authorization header to the given value"
   echo
   echo "  CLIGPT_PLATFORM                  Platform to use, see the -p, --platform flag below"
@@ -138,7 +137,8 @@ usage() {
   echo "  -h, --help                       Show this message"
   echo "  -p, --platform=<name>            LLM platform to use (see PLATFORMS above for more details)"
   echo "  -m, --model=<name>               ID of the model to use (default to $(fallback_default "$CLIGPT_MODEL"))"
-  echo "  -f, --file=<file>                File to be attached along with a prompt"
+  echo "  -f, --file=<file/url>            File to be attached along with a prompt"
+  echo "  -u, --url=<file/url>             Alias to -f and --file"
   echo "  -T, --temperature=<temp>         Sampling temperature, higher is more random (default to $(fallback_default "$CLIGPT_TEMP"))"
   echo "  -t, --max-tokens=<number>        Maximum number of tokens to generate in the completion (default to $(fallback_default "$CLIGPT_TOKEN"))"
   echo "  -c, --context, --context=<file>  Use chat context (default to false), optionally use and store the context in the given file. The prompt from command line will be passed as a system message to the assistant, cannot be used in a pipe"
