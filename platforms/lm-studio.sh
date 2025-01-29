@@ -16,12 +16,45 @@ lmstudio_api() {
   http_json "$CLIGPT_LMSTUDIO_API_BASE" '.error.message' '.error.type' "$@"
 }
 
+lmstudio_mime() {
+  case "$CLIGPT_FILE" in
+    *.jpg|*.jpeg)
+      printf 'image/jpeg'
+      ;;
+    *.png)
+      printf 'image/png'
+      ;;
+    *.webp)
+      printf 'image/webp'
+      ;;
+    *.gif)
+      printf 'image/gif'
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 lmstudio_test() {
   lmstudio_api v1/models '.' 1>/dev/null
 }
 
 lmstudio_messages() {
-  printf '[{"role":"%s","content":%s}]' "$1" "$(tojson "$2")"
+  if test -n "$CLIGPT_FILE"; then
+    local mime_type
+    mime_type="$(lmstudio_mime "$CLIGPT_FILE")"
+    if test $? -ne 0; then
+      echo "ERROR: only JPEG, PNG, WEBP and GIF is supported" >&2
+      return 1
+    fi
+
+    echo "Attaching $mime_type file $CLIGPT_FILE" >&2
+  fi
+
+  local content="[]"
+  content="$(additem "$content" "$(printf '{"type":"text","text":%s}' "$(tojson "$2")")")"
+  printf '[{"role":"%s","content":%s}]' "$1" "$content"
 }
 
 lmstudio() {

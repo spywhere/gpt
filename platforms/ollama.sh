@@ -21,6 +21,10 @@ ollama_test() {
 }
 
 ollama_messages() {
+  if test -n "$CLIGPT_FILE"; then
+    echo "Attaching file $CLIGPT_FILE" >&2
+  fi
+
   printf '[{"role":"%s","content":%s}]' "$1" "$(tojson "$2")"
 }
 

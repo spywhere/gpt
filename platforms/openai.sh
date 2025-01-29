@@ -22,6 +22,26 @@ openai_initialize() {
   fi
 }
 
+openai_mime() {
+  case "$CLIGPT_FILE" in
+    *.jpg|*.jpeg)
+      printf 'image/jpeg'
+      ;;
+    *.png)
+      printf 'image/png'
+      ;;
+    *.webp)
+      printf 'image/webp'
+      ;;
+    *.gif)
+      printf 'image/gif'
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 openai_test() {
   if test -z "$CLIGPT_API_AUTHORIZATION"; then
     echo "ERROR: CLIGPT_API_AUTHORIZATION is required" >&2
@@ -34,7 +54,20 @@ openai_api() {
 }
 
 openai_messages() {
-  printf '[{"role":"%s","content":%s}]' "$1" "$(tojson "$2")"
+  if test -n "$CLIGPT_FILE"; then
+    local mime_type
+    mime_type="$(openai_mime "$CLIGPT_FILE")"
+    if test $? -ne 0; then
+      echo "ERROR: only JPEG, PNG, WEBP and GIF is supported" >&2
+      return 1
+    fi
+
+    echo "Attaching $mime_type file $CLIGPT_FILE" >&2
+  fi
+
+  local content="[]"
+  content="$(additem "$content" "$(printf '{"type":"text","text":%s}' "$(tojson "$2")")")"
+  printf '[{"role":"%s","content":%s}]' "$1" "$content"
 }
 
 openai() {
