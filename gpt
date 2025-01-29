@@ -667,17 +667,29 @@ main() {
         fi
         CLIGPT_TIMEOUT="$value"
         ;;
-      -f | --file)
+      -f | --file | -u | --url)
         if test -z "$equal_sign"; then
-          echo "ERROR: a file is required (perhaps missing an equal sign?)" >&2
+          echo "ERROR: a file/URL is required (perhaps missing an equal sign?)" >&2
           return 1
         fi
-        if test -f "$value"; then
-          CLIGPT_FILE="$value"
-        else
-          echo "ERROR: file '$value' is not exists" >&2
-          return 1
-        fi
+
+        case "$value" in
+          http://*|https://*)
+            CLIGPT_FILE="$value"
+            ;;
+          *://*)
+            echo "ERROR: URL '$value' is not allowed" >&2
+            return 1
+            ;;
+          *)
+            if test -f "$value"; then
+              CLIGPT_FILE="$value"
+            else
+              echo "ERROR: file '$value' is not exists" >&2
+              return 1
+            fi
+            ;;
+        esac
         ;;
       -T | --temperature)
         if test -z "$equal_sign"; then
@@ -868,15 +880,26 @@ main() {
                     ;;
                 esac
 
-                if test -z "$value"; then
-                  echo "All attachment cleared" >&2
-                  CLIGPT_FILE=""
-                elif test -f "$value"; then
-                  echo "File '$value' will be attached with the next prompt" >&2
-                  CLIGPT_FILE="$value"
-                else
-                  echo "ERROR: file '$value' is not exists" >&2
-                fi
+                case "$value" in
+                  http://*|https://*)
+                    echo "URL '$value' will be attached with the next prompt" >&2
+                    CLIGPT_FILE="$value"
+                    ;;
+                  *://*)
+                    echo "ERROR: URL '$value' is not allowed" >&2
+                    ;;
+                  *)
+                    if test -z "$value"; then
+                      echo "All attachment cleared" >&2
+                      CLIGPT_FILE=""
+                    elif test -f "$value"; then
+                      echo "File '$value' will be attached with the next prompt" >&2
+                      CLIGPT_FILE="$value"
+                    else
+                      echo "ERROR: file '$value' is not exists" >&2
+                    fi
+                    ;;
+                esac
                 ;;
               /system)
                 # TODO: Add system prompt

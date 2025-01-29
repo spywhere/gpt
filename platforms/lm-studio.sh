@@ -18,6 +18,8 @@ lmstudio_api() {
 
 lmstudio_mime() {
   case "$CLIGPT_FILE" in
+    *://*)
+      ;;
     *.jpg|*.jpeg)
       printf 'image/jpeg'
       ;;
@@ -49,7 +51,11 @@ lmstudio_messages() {
       return 1
     fi
 
-    echo "Attaching $mime_type file $CLIGPT_FILE" >&2
+    if test -n "$mime_type"; then
+      echo "Attaching $mime_type file $CLIGPT_FILE" >&2
+    else
+      echo "Attaching URL $CLIGPT_FILE" >&2
+    fi
   fi
 
   local content="[]"
