@@ -992,7 +992,7 @@ main() {
         if test $? -ne 0; then
           continue
         fi
-        prompts="$(additem "$prompts" "$prefix")"
+        prompts="$(additems "$prompts" "$prefix")"
         prompts="$(additional_prompts "$kind" "$prompts")"
         if test $? -ne 0; then
           continue
