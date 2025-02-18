@@ -47,6 +47,11 @@ if test -n "$CLIGPT_FORCE_COLOR" || (test -t 1 && test -n "$TERM" -a -n "$(comma
       return
     fi
     tput sc
+    # Add a new line
+    tput il 1
+    # Change scroll region to exclude the last lines
+    tput csr 0 $(($(tput lines) - padding - 3))
+
     tput cup "$(( $(tput lines) - 2 - padding ))" 0
     printf '%s\n' "$(repeat -)"
   }
@@ -842,6 +847,9 @@ main() {
         if test -z "$line"; then
           break
         fi
+        if is_fancy; then
+          printf '%s[User]%s %s\n' "$esc_green" "$esc_reset" "$line"
+        fi
 
         case "$line" in
           /*)
@@ -973,9 +981,6 @@ main() {
             ;;
         esac
 
-        if is_fancy; then
-          printf '%s[User]%s %s\n' "$esc_green" "$esc_reset" "$line"
-        fi
         current_items="$("$CLIGPT_PLATFORM" messages user "$line")"
         if test $? -ne 0; then
           continue
