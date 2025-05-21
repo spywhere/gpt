@@ -302,12 +302,34 @@ run_task() {
   return "$code"
 }
 
+validate_checksum() {
+  if test "$1" = "s1" && test -z "$(command -v shasum)"; then
+    return 1
+  fi
+  if test "$1" = "m" && test -z "$(command -v md5sum)"; then
+    return 1
+  fi
+
+  local checksum
+  if test "$1" = "s1"; then
+    checksum="$(shasum -a1 "$3" | cut -d' ' -f1)"
+  elif test "$1" = "m"; then
+    checksum="$(md5sum "$3" | cut -d' ' -f1)"
+  fi
+  test "$checksum" = "$(parsejson "$CLIGPT_CHECKSUM" --arg name "$2" --arg alg "$1" '.[$name][$alg]')"
+}
+
 load_platforms() {
   platforms="{}"
   for platform_path in "$CLIGPT_PLATFORM_STORAGE"/*.sh; do
     local platform_name="$(basename "$platform_path")"
     if test "$platform_name" = '*.sh'; then
       break
+    fi
+
+    if ! validate_checksum s1 "$platform_name" "$platform_path" && ! validate_checksum m "$platform_name" "$platform_path"; then
+      echo "ERROR: platform '$platform_name' integrity is invalid, try updating the tool and redownload its platforms." >&2
+      continue
     fi
 
     . "$platform_path"
@@ -358,6 +380,10 @@ download_platforms() {
 validate_platform() {
   if ! download_platforms; then
     return 2
+  fi
+
+  if test -z "$(command -v shasum)" -a -z "$(command -v md5sum)"; then
+    echo "WARN: 'shasum' or 'md5sum' is missing, skip platform integrity check" >&2
   fi
 
   local has_test=0

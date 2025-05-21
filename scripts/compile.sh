@@ -33,5 +33,9 @@ checksum_json() {
   list_checksum | jq -sc 'map({(.filename|tostring): del(.filename)}) | add'
 }
 
-cp ./gpt ./gpt.bck
-sed "s/^CLIGPT_CHECKSUM=.*$/CLIGPT_CHECKSUM='"$(checksum_json)"'/g" ./gpt.bck > ./gpt
+if test "$1" = "compile"; then
+  cp ./gpt ./gpt.bck
+  sed "s/^CLIGPT_CHECKSUM=.*$/CLIGPT_CHECKSUM='"$(checksum_json)"'/g" ./gpt.bck > ./gpt
+elif test "$1" = "json"; then
+  checksum_json
+fi
