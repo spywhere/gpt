@@ -499,7 +499,7 @@ models() {
   if ! handle_status "$?"; then
     exit 1
   fi
-  parsejson "$models" '.[] | "  - \(.id)\n      by: \(.by)"'
+  parsejson "$models" '.[]'
 }
 
 validate_context() {

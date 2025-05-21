@@ -29,7 +29,7 @@ ollama() {
       ollama_test
       ;;
     models)
-      ollama_api api/tags '.models | map({ id: .name, by: .details.family })'
+      ollama_api api/tags '.models | map("  - \(.name)\n      by: \(.details.family)")'
       ;;
     messages)
       shift

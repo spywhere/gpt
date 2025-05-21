@@ -70,7 +70,7 @@ lmstudio() {
       lmstudio_test
       ;;
     models)
-      lmstudio_api v1/models '.data | map({ id: .id, by: .owned_by })'
+      lmstudio_api v1/models '.data | map("  - \(.id)\n      by: \(.owned_by)")'
       ;;
     messages)
       shift

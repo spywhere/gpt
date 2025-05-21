@@ -75,7 +75,7 @@ openai() {
       openai_test
       ;;
     models)
-      openai_api models '.data | map({ id: .id, by: .owned_by })'
+      openai_api models '.data | map("  - \(.id)\n      by: \(.owned_by)")'
       ;;
     messages)
       shift
