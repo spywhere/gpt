@@ -4,6 +4,12 @@ if ! test -d "./platforms"; then
   exit 1
 fi
 
+if test -n "$(command -v gsed)"; then
+  sed() {
+    gsed "$@"
+  }
+fi
+
 list_checksum() {
   for platform_path in ./platforms/*.sh; do
     platform_name="$(basename "$platform_path")"
@@ -27,4 +33,5 @@ checksum_json() {
   list_checksum | jq -sc 'map({(.filename|tostring): del(.filename)}) | add'
 }
 
-sed -i '.bck' "s/CLIGPT_CHECKSUM=.*/CLIGPT_CHECKSUM='"$(checksum_json)"'/g" ./gpt
+cp ./gpt ./gpt.bck
+sed "s/^CLIGPT_CHECKSUM=.*$/CLIGPT_CHECKSUM='"$(checksum_json)"'/g" ./gpt.bck > ./gpt
