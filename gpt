@@ -67,12 +67,31 @@ if test -n "$CLIGPT_FORCE_COLOR" || (test -t 1 && test -n "$TERM" -a -n "$(comma
     tput rc >&2
     tput ed >&2
   }
+
+  display_image() {
+    local width="$(( $(tput cols) / 4 ))"
+    local height="$(( $(tput lines) / 8 ))"
+    if test -n "$(command -v timg)"; then
+      timg "-g${width}x${height}" -I "$1" 2>/dev/null
+    fi
+
+    printf '%s\n' "$2" >&2
+  }
+  display_image_url() {
+    curl -sLo- "$1" | display_image - "$2"
+  }
 else
   draw_ui() {
     return 0
   }
   restore_ui() {
     return 0
+  }
+  display_image() {
+    printf '%s\n' "$2" >&2
+  }
+  display_image_url() {
+    display_image "$1" "$2"
   }
 fi
 
@@ -319,7 +338,7 @@ download_platforms() {
     fi
 
     printf "Downloading platform '%s' into '%s'... " "$platform_file" "$CLIGPT_PLATFORM_STORAGE/$platform_file" >&2
-    curl -sSL "$platform_url" -o "$CLIGPT_PLATFORM_STORAGE/$platform_file" 1>/dev/null 2>&1
+    curl -sSL "$platform_url" -o "$CLIGPT_PLATFORM_STORAGE/$platform_file" >/dev/null 2>&1
     if test "$?" -ne 0; then
       printf 'failed\n' >&2
       echo "ERROR: failed to download platform '$platform_file'" >&2
@@ -910,7 +929,7 @@ main() {
 
                 case "$value" in
                   http://*|https://*)
-                    echo "URL '$value' will be attached with the next prompt" >&2
+                    display_image_url "$value" "URL '$value' will be attached with the next prompt"
                     CLIGPT_FILE="$value"
                     ;;
                   *://*)
@@ -923,7 +942,7 @@ main() {
                       echo "All attachment cleared" >&2
                       CLIGPT_FILE=""
                     elif test -f "$value"; then
-                      echo "File '$value' will be attached with the next prompt" >&2
+                      display_image "$value" "File '$value' will be attached with the next prompt"
                       CLIGPT_FILE="$value"
                     else
                       echo "ERROR: file '$value' is not exists" >&2
