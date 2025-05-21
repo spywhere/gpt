@@ -907,7 +907,9 @@ main() {
                     echo "ERROR: URL '$value' is not allowed" >&2
                     ;;
                   *)
-                    if test -z "$value"; then
+                    if test -z "$(command -v base64)"; then
+                      echo "WARN: base64 is missing, skipping attachment" >&2
+                    elif test -z "$value"; then
                       echo "All attachment cleared" >&2
                       CLIGPT_FILE=""
                     elif test -f "$value"; then
@@ -1126,6 +1128,9 @@ self_test() {
     echo "ERROR: jq is found to be a dirty version ($(jq --version)) which might not working correctly." >&2
     echo "Try install a more stable version instead." >&2
     test_result=1
+  fi
+  if ! test -n "$(command -v base64)"; then
+    echo "WARN: base64 is missing, file attachment will be disabled" >&2
   fi
 
   return $test_result
