@@ -19,9 +19,10 @@ is_fancy() {
 }
 
 esc_reset="" # reset
-esc_blue="" # indicate process
-esc_green="" # indicate options and information
-esc_yellow="" # indicate warnings
+esc_gray="" # indicate hints
+esc_blue="" # indicate system messages
+esc_green="" # indicate user messages
+esc_yellow="" # indicate assistant messages
 esc_red="" # indicate errors
 
 inline_support=0
@@ -30,6 +31,7 @@ if test -n "$CLIGPT_FORCE_COLOR" || (test -t 1 && test -n "$TERM" -a -n "$(comma
     inline_support=1
   fi
   esc_reset="$(tput sgr0)"
+  esc_gray="$(tput setaf 8)"
   if test "$(tput colors)" -gt 8; then
     esc_blue="$(tput setaf 12)"
     esc_green="$(tput setaf 10)"
@@ -135,6 +137,7 @@ usage() {
   echo "  CLIGPT_TOKEN                     Maximum number of tokens to generate in the completion, see the -t, --max-tokens flag below"
   echo "  CLIGPT_TIMEOUT                   Maximum number of seconds before request timed out, see the --timeout flag below"
   echo "  CLIGPT_FORCE_COLOR               Set to non-empty to force rendering with colors"
+  echo "  CLIGPT_NO_HINT                   Set to non-empty to disable hintings"
   echo "  CLIGPT_CONTEXT_STORAGE           Directory to store/load the context file (currently set to $(fallback_default "$CLIGPT_CONTEXT_STORAGE" "current directory" "."))"
   echo "  CLIGPT_PLATFORM_STORAGE          Directory to store/load the supported platforms (currently set to $CLIGPT_PLATFORM_STORAGE)"
   echo
@@ -816,14 +819,21 @@ main() {
   fi
   if test -z "$context" && test -z "$prompt"; then
     echo "No prompt given" >&2
-    echo "Use --help for usage" >&2
+    if test -z "$CLIGPT_NO_HINT"; then
+      echo "Use --help for usage" >&2
+    fi
     return
+  fi
+
+  if test -z "$CLIGPT_NO_HINT"; then
+    printf '%splatform: %s%s\n' "$esc_gray" "$CLIGPT_PLATFORM" "$esc_reset" >&2
+    printf '%smodel   : %s%s\n' "$esc_gray" "$CLIGPT_MODEL" "$esc_reset" >&2
   fi
 
   local prompts="[]"
   if test -n "$context"; then
     if test "$context" != '-'; then
-      printf -- "==== Context will be stored in '%s' ====\n" "$context"
+      printf '%scontext : %s%s\n' "$esc_gray" "$context" "$esc_reset" >&2
     fi
     if test "$context" != '-' && test -f "$context"; then
       prompts="$(validate_context "$context" yes)"
