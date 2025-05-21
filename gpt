@@ -623,6 +623,7 @@ main() {
   fi
   bootstrap
   local kind=""
+  local task=""
   while test "$1" != ""; do
     local param="$(printf '%s' "$1" | sed 's/=.*//g')"
     local value="$(printf '%s' "$1" | sed 's/^[^=]*=//g')"
@@ -641,11 +642,7 @@ main() {
         return
         ;;
       --models)
-        if ! validate_platform; then
-          return 1
-        fi
-        models
-        return
+        task="models"
         ;;
       --uuid)
         echo "4210bbbd-7376-4c55-ac3a-093552be821c"
@@ -796,6 +793,11 @@ main() {
 
   if ! validate_platform; then
     return 1
+  fi
+
+  if test -n "$task"; then
+    "$task"
+    return
   fi
 
   local prompt=""
