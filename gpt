@@ -147,44 +147,43 @@ usage() {
 
   echo
   echo "ENVIRONMENT VARIABLES"
-  echo "  CLIGPT_API_BASE                  Base URL for LLM platform API (override platform specific API base URL)"
-  echo "  CLIGPT_API_AUTHORIZATION         Set an Authorization header to the given value"
+  echo "  CLIGPT_API_BASE            Base URL for LLM platform API (override platform specific API base URL)"
+  echo "  CLIGPT_API_AUTHORIZATION   Set an Authorization header to the given value"
   echo
-  echo "  CLIGPT_PLATFORM                  Platform to use, see the -p, --platform flag below"
-  echo "  CLIGPT_MODEL                     ID of the model to use, see the -m, --model flag below"
-  echo "  CLIGPT_TEMP                      Sampling temperature, see the -T, --temperature flag below"
-  echo "  CLIGPT_TOKEN                     Maximum number of tokens to generate in the completion, see the -t, --max-tokens flag below"
-  echo "  CLIGPT_TIMEOUT                   Maximum number of seconds before request timed out, see the --timeout flag below"
-  echo "  CLIGPT_FORCE_COLOR               Set to non-empty to force rendering with colors"
-  echo "  CLIGPT_NO_HINT                   Set to non-empty to disable hintings"
-  echo "  CLIGPT_CONTEXT_STORAGE           Directory to store/load the context file (currently set to $(fallback_default "$CLIGPT_CONTEXT_STORAGE" "current directory" "."))"
-  echo "  CLIGPT_PLATFORM_STORAGE          Directory to store/load the supported platforms (currently set to $CLIGPT_PLATFORM_STORAGE)"
+  echo "  CLIGPT_PLATFORM            Platform to use, see the -p, --platform flag below"
+  echo "  CLIGPT_MODEL               ID of the model to use, see the -m, --model flag below"
+  echo "  CLIGPT_TEMP                Sampling temperature, see the -T, --temperature flag below"
+  echo "  CLIGPT_TOKEN               Maximum number of tokens to generate in the completion, see the -t, --max-tokens flag below"
+  echo "  CLIGPT_TIMEOUT             Maximum number of seconds before request timed out, see the --timeout flag below"
+  echo "  CLIGPT_FORCE_COLOR         Set to non-empty to force rendering with colors"
+  echo "  CLIGPT_NO_HINT             Set to non-empty to disable hintings"
+  echo "  CLIGPT_CONTEXT_STORAGE     Directory to store/load the context file (currently set to $(fallback_default "$CLIGPT_CONTEXT_STORAGE" "current directory" "."))"
+  echo "  CLIGPT_PLATFORM_STORAGE    Directory to store/load the supported platforms (currently set to $CLIGPT_PLATFORM_STORAGE)"
   echo
   echo "FLAGS"
-  echo "  -h, --help                       Show this message"
-  echo "  -p, --platform=<name>            LLM platform to use (see PLATFORMS above for more details)"
-  echo "  -m, --model=<name>               ID of the model to use (default to $(fallback_default "$CLIGPT_MODEL"))"
-  echo "  -f, --file=<file/url>            File to be attached along with a prompt"
-  echo "  -u, --url=<file/url>             Alias to -f and --file"
-  echo "  -T, --temperature=<temp>         Sampling temperature, higher is more random (default to $(fallback_default "$CLIGPT_TEMP"))"
-  echo "  -t, --max-tokens=<number>        Maximum number of tokens to generate in the completion (default to $(fallback_default "$CLIGPT_TOKEN"))"
-  echo "  -c, --context, --context=<file>  Use chat context (default to false), optionally use and store the context in the given file. The prompt from command line will be passed as a system message to the assistant, cannot be used in a pipe"
-  echo "  --timeout=<number>               Maximum number of seconds before request timed out (default to "$(fallback_default "$CLIGPT_TIMEOUT")")"
-  echo "  --fancy[=<number>]               Use fancy UI with the given minimum padding (default to "$padding")"
-  echo "  --platforms                      List all available platforms (will start download supported platforms if no platform found)"
-  echo "  --models                         List all available models"
-  echo "  --uuid                           A unique ID for verifying the tool"
-  echo "  --debug                          Print request and response on to standard error"
-  echo "  --debug-dry                      Print request to standard error, but do not make a request"
+  echo "  -h, --help                 Show this message"
+  echo "  -p, --platform=<name>      LLM platform to use (see PLATFORMS above for more details)"
+  echo "  -m, --model=<name>         ID of the model to use (default to $(fallback_default "$CLIGPT_MODEL"))"
+  echo "  -f, --file=<file/url>      File to be attached along with a prompt"
+  echo "  -T, --temperature=<temp>   Sampling temperature, higher is more random (default to $(fallback_default "$CLIGPT_TEMP"))"
+  echo "  -t, --max-tokens=<number>  Maximum number of tokens to generate in the completion (default to $(fallback_default "$CLIGPT_TOKEN"))"
+  echo "  -c, --context[=<file>]     Use chat context (default to false), optionally use and store the context in the given file. The prompt from command line will be passed as a system message to the assistant, cannot be used in a pipe"
+  echo "  --timeout=<number>         Maximum number of seconds before request timed out (default to "$(fallback_default "$CLIGPT_TIMEOUT")")"
+  echo "  --fancy[=<number>]         Use fancy UI with the given minimum padding (default to "$padding")"
+  echo "  --platforms                List all available platforms (will start download supported platforms if no platform found)"
+  echo "  --models                   List all available models"
+  echo "  --uuid                     A unique ID for verifying the tool"
+  echo "  --debug                    Print request and response on to standard error"
+  echo "  --debug-dry                Print request to standard error, but do not make a request"
   echo
   echo "PROMPT HELPER -- cannot used with context"
-  echo "  --cmd, --command                 Produce only shell command output"
-  echo "  --cmds, --commands               Produce 3 shell commands output (alternatives)"
-  echo "  --code                           Produce only one-liner code"
-  echo "  --url                            Produce only URL for the given query"
+  echo "  --cmd, --command           Produce only shell command output"
+  echo "  --cmds, --commands         Produce 3 shell commands output (alternatives)"
+  echo "  --code                     Produce only one-liner code"
+  echo "  --url                      Produce only URL for the given query"
   echo
   echo "CONTEXT LOADER"
-  echo "  --fzf                            Fuzzy search for the context file in context storage (see CLIGPT_CONTEXT_STORAGE above) using fzf (fzf is required)"
+  echo "  --fzf                      Fuzzy search for the context file in context storage (see CLIGPT_CONTEXT_STORAGE above) using fzf (fzf is required)"
 
   if test "$cmd_name" != "prepare-commit-msg"; then
     echo
@@ -696,7 +695,7 @@ main() {
         fi
         CLIGPT_TIMEOUT="$value"
         ;;
-      -f | --file | -u | --url)
+      -f | --file)
         if test -z "$equal_sign"; then
           echo "ERROR: a file/URL is required (perhaps missing an equal sign?)" >&2
           return 1

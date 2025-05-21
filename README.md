@@ -1,11 +1,40 @@
 # GPT (gpt)
 A shell script for interacting with LLM models through chat completions. Battery included.
 
+## Features
+
+- Interactive chat session with attachment supported
+- One-off chat completions
+- Built-in prompts for one-liner code / shell command look up / URL lookup
+- Built-in integration with git commit message hook / ZSH
+
 ## Supported Platform
 
+- OpenRouter
 - OpenAI
 - Ollama
 - LM Studio
+
+## Requirements
+
+- Bash
+- `jq` - for interacting with JSON data
+- `curl` - for making a request to OpenAI
+- `base64` (optional) - for attachment processing
+- `timg` (optional) - for displaying an image
+
+## Get Started
+
+Simply download `gpt` script file and make it executable, then you can trigger `gpt --help` to see how to use and some useful flags.
+
+or you can simply use this shell command to download the script, put it under `/usr/local/bin` and make it executable.
+
+```
+curl -L https://github.com/spywhere/gpt/raw/main/gpt -o /usr/local/bin/gpt
+chmod +x /usr/local/bin/gpt
+```
+
+Note: To update, simply re-download the script again
 
 ## Usage
 
@@ -19,7 +48,18 @@ Run the command follows by the desired prompt of yours (mind the shell escapes),
 gpt how much wood would a wood chuck chuck\? If a wood chuck could chuck wood.
 ```
 
-Note: A chat completion is currently a one-off request, we are working on a support for an interactive session with a context.
+Note: A chat completion is a one-off request
+
+### Interactive Chat Session
+
+Run the command with `--context` (or just `-c`) flag to enter an interactive session.
+An optional context file path can be put in a flag (e.g., `--context=<filename>`) to store the conversations.
+
+```
+gpt -c you are a helpful assistant, help user fulfill their tasks
+```
+
+During the session, you can type `/help` or `/?` to view all available commands.
 
 ### A One-liner Code Search Engine
 
@@ -43,23 +83,6 @@ Run the command with a `--url` flag, follows by your desired lookup, GPT should 
 
 ```
 gpt --url openai documentation on chat completions
-```
-
-## Requirements
-
-- Bash or Zsh (we tried to make a script POSIX-compliance as much as possible)
-- `jq` - for interacting with JSON data
-- `curl` - for making a request to OpenAI
-
-## Get Started
-
-Simply download `gpt` script file and make it executable, then you can trigger `gpt --help` to see how to use and some useful flags.
-
-or you can simply use this shell command to download the script, put it under `/usr/local/bin` and make it executable.
-
-```
-curl -L https://github.com/spywhere/gpt/raw/main/gpt -o /usr/local/bin/gpt
-chmod +x /usr/local/bin/gpt
 ```
 
 ## Debugging Prompt
