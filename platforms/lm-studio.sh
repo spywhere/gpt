@@ -1,14 +1,8 @@
 #!/bin/bash
 
 lmstudio_initialize() {
-  if test -n "$CLIGPT_API_BASE"; then
-    CLIGPT_API_BASE="$CLIGPT_API_BASE"
-  elif test -z "$CLIGPT_API_BASE"; then
+  if test -z "$CLIGPT_API_BASE"; then
     CLIGPT_API_BASE="http://localhost:1234"
-  fi
-
-  if test -n "$CLIGPT_MODEL"; then
-    CLIGPT_MODEL="$CLIGPT_MODEL"
   fi
 }
 
