@@ -328,8 +328,9 @@ load_platforms() {
     fi
 
     if ! validate_checksum s1 "$platform_name" "$platform_path" && ! validate_checksum m "$platform_name" "$platform_path"; then
-      echo "ERROR: platform '$platform_name' integrity is invalid, try updating the tool and redownload its platforms." >&2
-      continue
+      echo "WARN: platform '$platform_name' integrity is invalid, updating platforms." >&2
+      platforms="{}"
+      return
     fi
 
     . "$platform_path"
