@@ -30,7 +30,7 @@ is_fancy() {
   return $(( 1 - fancy ))
 }
 
-read_config() {
+read_configs() {
   if ! test -f "$CLIGPT_CONFIG/config.json"; then
     return
   fi
@@ -43,15 +43,26 @@ read_config() {
 }
 
 get_config() {
-  if test -n "$3"; then
+  if test -n "$1"; then
     parsejson "$config_json" --arg platform "$1" --arg key "$2" --arg default "$(get_config "$2" "$3")" '.platforms[$platform][$key] // $default'
     return $?
   fi
 
-  parsejson "$config_json" --arg key "$1" --arg default "$2" '.[$key] // $default'
+  parsejson "$config_json" --arg key "$2" --arg default "$3" '.[$key] // $default'
 }
 
-write_config() {
+load_configs() {
+  CLIGPT_PLATFORM="$(get_config '' platform)"
+  CLIGPT_TEMP="$(get_config "$CLIGPT_PLATFORM" temperature)"
+  CLIGPT_TOKEN="$(get_config "$CLIGPT_PLATFORM" token)"
+  CLIGPT_TIMEOUT="$(get_config "$CLIGPT_PLATFORM" timeout)"
+
+  CLIGPT_MODEL="$(get_config "$CLIGPT_PLATFORM" model)"
+  CLIGPT_API_BASE="$(get_config "$CLIGPT_PLATFORM" base_url)"
+  CLIGPT_API_AUTHORIZATION="$(get_config "$CLIGPT_PLATFORM" authorization)"
+}
+
+write_configs() {
   if ! test -d "$CLIGPT_CONFIG"; then
     mkdir -p "$CLIGPT_CONFIG"
   fi
@@ -59,7 +70,7 @@ write_config() {
   printf '%s' "$config_json" | jq . > "$CLIGPT_CONFIG/config.json"
 }
 
-migrate_to_config() {
+migrate_configs() {
   if test "$(parsejson "$config_json" '.')" != "{}"; then
     return
   fi
@@ -83,7 +94,7 @@ migrate_to_config() {
   config_json="$(set_config "$config_json" timeout "$CLIGPT_TIMEOUT" --raw)"
 
   local platforms
-  platforms="$(get_config platforms '{}')"
+  platforms="$(get_config '' platforms '{}')"
 
   if test -n "$CLIGPT_PLATFORM"; then
     local platform
@@ -97,7 +108,7 @@ migrate_to_config() {
   fi
 
   config_json="$(setitem "$config_json" platforms "$platforms")"
-  write_config
+  write_configs
   echo "${esc_blue}INFO:$esc_reset Environment variables have been migrated into $esc_yellow$CLIGPT_CONFIG/config.json$esc_reset" >&2
 }
 
@@ -748,8 +759,9 @@ main() {
     use_stdin=0
   fi
   bootstrap
-  read_config
-  migrate_to_config
+  read_configs
+  migrate_configs
+  load_configs
   local kind=""
   local task=""
   while test "$1" != ""; do
