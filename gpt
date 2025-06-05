@@ -8,15 +8,97 @@ if test -z "$HOME"; then
   HOME="$(printf '%s' ~)"
 fi
 
+if test -z "$CLIGPT_CONFIG"; then
+  CLIGPT_CONFIG="$HOME/.config/gpt"
+fi
+if ! test -d "$CLIGPT_CONFIG"; then
+  mkdir -p "$CLIGPT_CONFIG"
+fi
+if test -z "$CLIGPT_CACHE"; then
+  CLIGPT_CACHE="$HOME/.cache/gpt"
+fi
+
 tempfile="$(mktemp)"
 cmd_name="$(basename "$0")"
 debug=0
 fancy=0
 padding=1
+config_json="{}"
 context=""
 
 is_fancy() {
   return $(( 1 - fancy ))
+}
+
+read_config() {
+  if ! test -f "$CLIGPT_CONFIG/config.json"; then
+    return
+  fi
+
+  config_json="$(jq -c . "$CLIGPT_CONFIG/config.json")"
+  if test $? -ne 0; then
+    echo "ERROR: configurations cannot be read" >&2
+    exit 1
+  fi
+}
+
+get_config() {
+  if test -n "$3"; then
+    parsejson "$config_json" --arg platform "$1" --arg key "$2" --arg default "$(get_config "$2" "$3")" '.platforms[$platform][$key] // $default'
+    return $?
+  fi
+
+  parsejson "$config_json" --arg key "$1" --arg default "$2" '.[$key] // $default'
+}
+
+write_config() {
+  if ! test -d "$CLIGPT_CONFIG"; then
+    mkdir -p "$CLIGPT_CONFIG"
+  fi
+
+  printf '%s' "$config_json" | jq . > "$CLIGPT_CONFIG/config.json"
+}
+
+migrate_to_config() {
+  if test "$(parsejson "$config_json" '.')" != "{}"; then
+    return
+  fi
+
+  set_config() {
+    if test -z "$3"; then
+      echo "$1"
+      return
+    fi
+
+    if test "$4" = '--raw'; then
+      setitem "$1" "$2" "$3"
+    else
+      setitem "$1" "$2" "$(tojson "$3")"
+    fi
+  }
+
+  config_json="$(set_config "$config_json" platform "$CLIGPT_PLATFORM")"
+  config_json="$(set_config "$config_json" temperature "$CLIGPT_TEMP" --raw)"
+  config_json="$(set_config "$config_json" token "$CLIGPT_TOKEN" --raw)"
+  config_json="$(set_config "$config_json" timeout "$CLIGPT_TIMEOUT" --raw)"
+
+  local platforms
+  platforms="$(get_config platforms '{}')"
+
+  if test -n "$CLIGPT_PLATFORM"; then
+    local platform
+    platform="$(parsejson "$platforms" --arg platform "$CLIGPT_PLATFORM" '.[$platform] // {}')"
+
+    platform="$(set_config "$platform" model "$CLIGPT_MODEL")"
+    platform="$(set_config "$platform" base_url "$CLIGPT_API_BASE")"
+    platform="$(set_config "$platform" authorization "$CLIGPT_API_AUTHORIZATION")"
+
+    platforms="$(setitem "$platforms" "$CLIGPT_PLATFORM" "$platform")"
+  fi
+
+  config_json="$(setitem "$config_json" platforms "$platforms")"
+  write_config
+  echo "${esc_blue}INFO:$esc_reset Environment variables have been migrated into $esc_yellow$CLIGPT_CONFIG/config.json$esc_reset" >&2
 }
 
 esc_reset="" # reset
@@ -106,7 +188,7 @@ bootstrap() {
       # probably in the development mode
       CLIGPT_PLATFORM_STORAGE="./platforms"
     else
-      CLIGPT_PLATFORM_STORAGE="$HOME/.gpt"
+      CLIGPT_PLATFORM_STORAGE="$CLIGPT_CACHE/platforms"
     fi
   fi
 
@@ -148,18 +230,13 @@ usage() {
 
   echo
   echo "ENVIRONMENT VARIABLES"
-  echo "  CLIGPT_API_BASE            Base URL for LLM platform API (override platform specific API base URL)"
-  echo "  CLIGPT_API_AUTHORIZATION   Set an Authorization header to the given value"
-  echo
-  echo "  CLIGPT_PLATFORM            Platform to use, see the -p, --platform flag below"
-  echo "  CLIGPT_MODEL               ID of the model to use, see the -m, --model flag below"
-  echo "  CLIGPT_TEMP                Sampling temperature, see the -T, --temperature flag below"
-  echo "  CLIGPT_TOKEN               Maximum number of tokens to generate in the completion, see the -t, --max-tokens flag below"
-  echo "  CLIGPT_TIMEOUT             Maximum number of seconds before request timed out, see the --timeout flag below"
-  echo "  CLIGPT_FORCE_COLOR         Set to non-empty to force rendering with colors"
-  echo "  CLIGPT_NO_HINT             Set to non-empty to disable hintings"
+  echo "  CLIGPT_CONFIG              Directory to store/load the configurations (currently set to $CLIGPT_CONFIG)"
+  echo "  CLIGPT_CACHE               Directory to store/load the cache, such as supported platforms (currently set to $CLIGPT_CACHE)"
   echo "  CLIGPT_CONTEXT_STORAGE     Directory to store/load the context file (currently set to $(fallback_default "$CLIGPT_CONTEXT_STORAGE" "current directory" "."))"
   echo "  CLIGPT_PLATFORM_STORAGE    Directory to store/load the supported platforms (currently set to $CLIGPT_PLATFORM_STORAGE)"
+  echo
+  echo "  CLIGPT_FORCE_COLOR         Set to non-empty to force rendering with colors"
+  echo "  CLIGPT_NO_HINT             Set to non-empty to disable hintings"
   echo
   echo "FLAGS"
   echo "  -h, --help                 Show this message"
@@ -671,6 +748,8 @@ main() {
     use_stdin=0
   fi
   bootstrap
+  read_config
+  migrate_to_config
   local kind=""
   local task=""
   while test "$1" != ""; do
