@@ -211,6 +211,9 @@ bootstrap() {
   fi
 
   load_platforms
+  read_configs
+  migrate_configs
+  load_configs
 }
 
 fallback_default() {
@@ -765,9 +768,6 @@ main() {
     use_stdin=0
   fi
   bootstrap
-  read_configs
-  migrate_configs
-  load_configs
   local kind=""
   local task=""
   while test "$1" != ""; do
