@@ -455,7 +455,13 @@ download_platforms() {
       echo "ERROR: failed to download platform '$platform_file'" >&2
       return 1
     fi
-    printf 'done\n' >&2
+    printf "done\nChecking platform '%s' integrity... " "$platform_file" >&2
+    if ! validate_checksum s1 "$platform_file" "$CLIGPT_PLATFORM_STORAGE/$platform_file" && ! validate_checksum m "$platform_file" "$CLIGPT_PLATFORM_STORAGE/$platform_file"; then
+      printf 'failed\n' >&2
+      echo "ERROR: failed to verify platform '$platform_file', try updating the tool ($cmd_name) itself" >&2
+      return 1
+    fi
+    printf 'ok\n' >&2
   done
 
   load_platforms
