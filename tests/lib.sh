@@ -202,7 +202,26 @@ match() {
   output="$(cat "$output_name")"
 
   if ! test "$1" = "$output"; then
-    # TODO: Produce some output as JSON
+    echo "Expected output to match the content of $esc_yellow$output_name$esc_reset"
+    echo
+    echo "Output:"
+    if test -n "$1"; then
+      echo "$1" | sed "s/^/  $esc_red/" | sed "s/$/$esc_reset/"
+    else
+      echo "  ${esc_gray}empty$esc_reset"
+    fi
+    echo
+    echo "Expected:"
+    echo "$output" | sed "s/^/  $esc_green/" | sed "s/$/$esc_reset/"
+    echo
+    echo "Differences:"
+    local color
+    color="--color=never"
+    if is_interactive; then
+      color="--color=always"
+    fi
+    echo "$(echo "$input" | diff "$color" -u - "$output_name" | tail -n+4 | sed 's/^/  /')"
+    echo
     return 2
   fi
 }
