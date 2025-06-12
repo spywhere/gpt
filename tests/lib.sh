@@ -196,7 +196,7 @@ run_tests() {
 }
 
 gpt() {
-  CLIGPT_PLATFORM=testing CLIGPT_PLATFORM_STORAGE="$root/tests/platforms" "$root/gpt" "$@" >"$outfile" 2>"$errfile"
+  CLIGPT_CONFIG="$root/tests/common" CLIGPT_PLATFORM_STORAGE="$root/tests/platforms" "$root/gpt" "$@" >"$outfile" 2>"$errfile"
 }
 
 match() {

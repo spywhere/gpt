@@ -1,4 +1,3 @@
 Testing system
-No platform specified, using 'testing' instead
 No prompt given
 Use --help for usage

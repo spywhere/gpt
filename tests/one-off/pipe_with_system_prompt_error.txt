@@ -1,5 +1,4 @@
 Testing system
-No platform specified, using 'testing' instead
 system  : you are a helpful assistant
 platform: testing
 model   : 
