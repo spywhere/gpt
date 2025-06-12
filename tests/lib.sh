@@ -1,5 +1,6 @@
 #!/bin/bash
 
+filter=""
 cwd="$(dirname "$0")"
 root="$(dirname "$cwd")"
 
@@ -7,6 +8,7 @@ tempfile="$(mktemp)"
 outfile="$(mktemp)"
 errfile="$(mktemp)"
 pending="?"
+skipped="S"
 passed="P"
 failed="F"
 
@@ -19,6 +21,7 @@ esc_yellow="" # indicate variables
 inline_support=0
 if test -t 1 && test -n "$TERM" -a -n "$(command -v tput)" && test "$(tput colors)" -ge 8 && test -n "$(command -v tty)"; then
   pending="⏺"
+  skipped="○"
   passed="✓"
   failed="✕"
   if test -n "$(command -v wc)"; then
@@ -103,9 +106,9 @@ run_describe() {
 
   if is_interactive; then
     echo "$prefix$name"
-    run_tests "$prefix  "
+    run_tests --prefix "$prefix  "
   else
-    run_tests "$prefix$name > "
+    run_tests --prefix "$prefix$name > "
   fi
 }
 
@@ -117,6 +120,17 @@ run_test() {
 
   TEST_FN="$(echo "$fn" | sed 's/^test_//')"
   TEST_NAME="$name"
+
+  if test -n "$filter" && (echo "$TEST_FN - $name" | grep -qv "$filter"); then
+    if is_interactive; then
+      echo "$2$skipped $esc_gray$name$esc_reset"
+    else
+      echo "$2$name [$skipped]"
+    fi
+
+    return
+  fi
+
   local response
   response="$(run_task "__$fn" "$2$pending $esc_gray$name$esc_reset")"
   if test $? -ne 0; then
@@ -137,11 +151,26 @@ run_test() {
 
 run_tests() {
   local prefix
-  prefix="$1"
   local describes
   describes=""
   local tests
   tests=""
+
+  while true; do
+    case "$1" in
+      --prefix)
+        shift
+        prefix="$1"
+        ;;
+      --filter)
+        shift
+        filter="$1"
+        ;;
+      *)
+        ;;
+    esac
+    break
+  done
 
   while read -r raw_fn; do
     fn="$(echo "$raw_fn" | cut -d' ' -f3-)"

@@ -24,7 +24,11 @@ for name in "$cwd"/*; do
   done
 done
 
-run_tests
+if test -z "$1"; then
+  run_tests
+else
+  run_tests --filter "$1"
+fi
 
 # describe_flags() {
 #   test_help_message() {
