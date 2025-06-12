@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CLIGPT_CHECKSUM='{"lm-studio.sh":{"m":"304787e0db0d96f65eaf37c7ef698c29","s1":"107f4b0b5aaad7254e450b174384ca64ec5a3c23"},"ollama.sh":{"m":"a22c80c62bb9c66bc31edcf089afb9e0","s1":"91ef564bf84ee15d25f3dfcb33639190ad8769e1"},"openai.sh":{"m":"8cbfdf890a1c4736d7f2ae37ea3491e4","s1":"289c870a7042e9f88b5a67222f067c96395acbca"},"openrouter.sh":{"m":"cca666b60718612c9726bdcd084d686a","s1":"bcdeeb765e82f3d4fd93e09a66ed1bd9842bd34a"}}'
+CLIGPT_CHECKSUM='{"lm-studio.sh":{"m":"304787e0db0d96f65eaf37c7ef698c29","s1":"107f4b0b5aaad7254e450b174384ca64ec5a3c23"},"ollama.sh":{"m":"a22c80c62bb9c66bc31edcf089afb9e0","s1":"91ef564bf84ee15d25f3dfcb33639190ad8769e1"},"openai.sh":{"m":"8cbfdf890a1c4736d7f2ae37ea3491e4","s1":"289c870a7042e9f88b5a67222f067c96395acbca"},"openrouter.sh":{"m":"cca666b60718612c9726bdcd084d686a","s1":"bcdeeb765e82f3d4fd93e09a66ed1bd9842bd34a"},"test.sh":{"m":"68948bca49a985ea807c8feaee4cf533","s1":"81040580e38413d8d3015b244a85e809ac7176e1"}}'
 CLIGPT_PLATFORM_REPO="spywhere/gpt"
 CLIGPT_PLATFORM_PATH="platforms"
 
@@ -25,6 +25,10 @@ fancy=0
 padding=1
 config_json="{}"
 context=""
+
+is_development_mode() {
+  test -f README.md -a -f "./gpt" -a -d "./.git"
+}
 
 is_fancy() {
   return $(( 1 - fancy ))
@@ -195,8 +199,7 @@ is_interactive() {
 
 bootstrap() {
   if test -z "$CLIGPT_PLATFORM_STORAGE"; then
-    if test -f README.md -a -f "./gpt" -a -d "./.git"; then
-      # probably in the development mode
+    if is_development_mode; then
       CLIGPT_PLATFORM_STORAGE="./platforms"
     else
       CLIGPT_PLATFORM_STORAGE="$CLIGPT_CACHE/platforms"
@@ -418,7 +421,7 @@ load_platforms() {
       break
     fi
 
-    if ! validate_checksum s1 "$platform_name" "$platform_path" && ! validate_checksum m "$platform_name" "$platform_path"; then
+    if ! is_development_mode && ! validate_checksum s1 "$platform_name" "$platform_path" && ! validate_checksum m "$platform_name" "$platform_path"; then
       echo "WARN: platform '$platform_name' integrity is invalid, updating platforms." >&2
       platforms="{}"
       return
@@ -948,14 +951,16 @@ main() {
 
   local prompt=""
   if test "$use_stdin" -eq 1; then
-    if test -n "$context"; then
-      echo "ERROR: context cannot be used in the pipe" >&2
-      return 1
-    fi
-    if test -n "$*"; then
-      prompt="$(printf '%s:\n%s' "$*" "$(cat -)")"
-    else
-      prompt="$(cat -)"
+    if ! is_development_mode; then
+      if test -n "$context"; then
+        echo "ERROR: context cannot be used in the pipe" >&2
+        return 1
+      fi
+      if test -n "$*"; then
+        prompt="$(printf '%s:\n%s' "$*" "$(cat -)")"
+      else
+        prompt="$(cat -)"
+      fi
     fi
   else
     prompt="$*"
@@ -1006,6 +1011,9 @@ main() {
       draw_ui
       printf '%s[User]%s ' "$esc_green" "$esc_reset"
       if read -r line; then
+        if is_development_mode && test -n "$context"; then
+          printf '%s\n' "$line"
+        fi
         restore_ui
         if test -z "$line"; then
           break

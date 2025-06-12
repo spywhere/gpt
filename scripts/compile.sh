@@ -11,14 +11,15 @@ if test -n "$(command -v gsed)"; then
 fi
 
 list_checksum() {
-  for platform_path in ./platforms/*.sh; do
+  directory="$1"
+  for platform_path in ./$directory/*.sh; do
     platform_name="$(basename "$platform_path")"
     if test "$platform_name" = '*.sh'; then
       break
     fi
 
     hash() {
-      "$1" "./platforms/$platform_name" | cut -d' ' -f1
+      "$1" "./$directory/$platform_name" | cut -d' ' -f1
     }
 
     printf '{'
@@ -29,8 +30,14 @@ list_checksum() {
   done
 }
 
+list_checksums() {
+  for directory in $@; do
+    list_checksum "$directory"
+  done
+}
+
 checksum_json() {
-  list_checksum | jq -sc 'map({(.filename|tostring): del(.filename)}) | add'
+  list_checksums platforms tests | jq -sc 'map({(.filename|tostring): del(.filename)}) | add'
 }
 
 if test "$1" = "compile"; then
