@@ -44,7 +44,7 @@ read_configs() {
 
 get_config() {
   if test -n "$1"; then
-    parsejson "$config_json" --arg platform "$1" --arg key "$2" --arg default "$(get_config "$2" "$3")" '.platforms[$platform][$key] // $default'
+    parsejson "$config_json" --arg platform "$1" --arg key "$2" --arg default "$(get_config '' "$2" "$3")" '.platforms[$platform][$key] // $default'
     return $?
   fi
 
