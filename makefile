@@ -3,3 +3,6 @@ compile:
 
 json:
 	@sh scripts/compile.sh json
+
+test:
+	@sh tests/run.sh
