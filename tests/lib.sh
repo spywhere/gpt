@@ -115,6 +115,7 @@ run_test() {
   local name
   name="$(prettify_name test "$1")"
 
+  TEST_FN="$(echo "$fn" | sed 's/^test_//')"
   TEST_NAME="$name"
   local response
   response="$(run_task "__$fn" "$2$pending $esc_gray$name$esc_reset")"
@@ -215,9 +216,9 @@ expect() {
         shift
 
         if test -n "$1"; then
-          match "$input" "$(echo "$1" | sed "s|*|$TEST_FILE|")"
+          match "$input" "$(echo "$1" | sed "s|*|$TEST_WORKDIR/$TEST_FN|")"
         else
-          match "$input" "$TEST_FILE"
+          match "$input" "$TEST_WORKDIR/$TEST_FN"
         fi
 
         return $?

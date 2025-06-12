@@ -18,6 +18,7 @@ for name in "$cwd"/*; do
       continue
     fi
 
+    TEST_WORKDIR="$name"
     TEST_FILE="$(echo "$testfile" | sed 's/\.sh$//')"
     . "$testfile"
   done
