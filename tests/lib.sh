@@ -180,11 +180,11 @@ match() {
       echo "Output:"
       echo "$1" | sed "s/^/  $esc_red/" | sed "s/$/$esc_reset/"
       echo
-      return 2
+      exit 2
     fi
   fi
 
-  output_name="$2.txt"
+  output_name="$2"
   if ! test -f "$output_name"; then
     echo "Expected output to match the content of $esc_yellow$output_name$esc_reset, but the file was not found"
     echo
@@ -196,7 +196,7 @@ match() {
       echo "  ${esc_gray}empty$esc_reset"
       echo
     fi
-    return 2
+    exit 2
   fi
 
   output="$(cat "$output_name")"
@@ -222,7 +222,7 @@ match() {
     fi
     echo "$(echo "$input" | diff "$color" -u - "$output_name" | tail -n+4 | sed 's/^/  /')"
     echo
-    return 2
+    exit 2
   fi
 }
 
@@ -237,10 +237,10 @@ expect() {
         if test -n "$1"; then
           match "$input" "$(echo "$1" | sed "s|*|$TEST_WORKDIR/$TEST_FN|")"
         else
-          match "$input" "$TEST_WORKDIR/$TEST_FN"
+          match "$input" "$TEST_WORKDIR/$TEST_FN.txt"
         fi
 
-        return $?
+        return
         ;;
       *)
         return 1
@@ -282,7 +282,7 @@ expect() {
         shift
 
         match "$input"
-        return $?
+        return
         ;;
       *)
         input_selector "$@"
