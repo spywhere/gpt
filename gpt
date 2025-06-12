@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CLIGPT_CHECKSUM='{"lm-studio.sh":{"m":"304787e0db0d96f65eaf37c7ef698c29","s1":"107f4b0b5aaad7254e450b174384ca64ec5a3c23"},"ollama.sh":{"m":"a22c80c62bb9c66bc31edcf089afb9e0","s1":"91ef564bf84ee15d25f3dfcb33639190ad8769e1"},"openai.sh":{"m":"8cbfdf890a1c4736d7f2ae37ea3491e4","s1":"289c870a7042e9f88b5a67222f067c96395acbca"},"openrouter.sh":{"m":"cca666b60718612c9726bdcd084d686a","s1":"bcdeeb765e82f3d4fd93e09a66ed1bd9842bd34a"},"test.sh":{"m":"68948bca49a985ea807c8feaee4cf533","s1":"81040580e38413d8d3015b244a85e809ac7176e1"}}'
+CLIGPT_CHECKSUM='{"lm-studio.sh":{"m":"304787e0db0d96f65eaf37c7ef698c29","s1":"107f4b0b5aaad7254e450b174384ca64ec5a3c23"},"ollama.sh":{"m":"a22c80c62bb9c66bc31edcf089afb9e0","s1":"91ef564bf84ee15d25f3dfcb33639190ad8769e1"},"openai.sh":{"m":"8cbfdf890a1c4736d7f2ae37ea3491e4","s1":"289c870a7042e9f88b5a67222f067c96395acbca"},"openrouter.sh":{"m":"cca666b60718612c9726bdcd084d686a","s1":"bcdeeb765e82f3d4fd93e09a66ed1bd9842bd34a"},"testing-platform.sh":{"m":"68948bca49a985ea807c8feaee4cf533","s1":"81040580e38413d8d3015b244a85e809ac7176e1"}}'
 CLIGPT_PLATFORM_REPO="spywhere/gpt"
 CLIGPT_PLATFORM_PATH="platforms"
 
