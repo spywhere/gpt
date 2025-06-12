@@ -951,11 +951,10 @@ main() {
 
   local prompt=""
   if test "$use_stdin" -eq 1; then
-    if ! is_development_mode; then
-      if test -n "$context"; then
-        echo "ERROR: context cannot be used in the pipe" >&2
-        return 1
-      fi
+    if ! is_development_mode && test -n "$context"; then
+      echo "ERROR: context cannot be used in the pipe" >&2
+      return 1
+    elif test -z "$context"; then
       if test -n "$*"; then
         prompt="$(printf '%s:\n%s' "$*" "$(cat -)")"
       else
