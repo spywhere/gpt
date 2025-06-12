@@ -1,2 +1,4 @@
-model[] max_tokens[] temp[]
-prompt[[{"role":"user","content":"hello world"}]]
+model=
+max_tokens=
+temp=
+prompts=[{"role":"user","content":"hello world"}]

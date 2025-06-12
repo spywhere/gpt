@@ -14,7 +14,7 @@ testing() {
       ;;
     chat/completions)
       shift
-      printf '{ "role": "assistant", "content": %s }' "$(tojson "$(printf "model[%s] max_tokens[%s] temp[%s]\nprompt[%s]" "$CLIGPT_MODEL" "$CLIGPT_TOKEN" "$CLIGPT_TEMPERATURE" "$1")")"
+      printf '{ "role": "assistant", "content": %s }' "$(tojson "$(printf "model=%s\nmax_tokens=%s\ntemp=%s\nprompts=%s" "$CLIGPT_MODEL" "$CLIGPT_TOKEN" "$CLIGPT_TEMPERATURE" "$1")")"
       ;;
     *)
       return 1
