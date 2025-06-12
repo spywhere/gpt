@@ -1,0 +1,3 @@
+Available models:
+  - test-model
+  - another-model
