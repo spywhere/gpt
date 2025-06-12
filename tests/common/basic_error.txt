@@ -1,0 +1,4 @@
+Testing system
+No platform specified, using 'testing' instead
+platform: testing
+model   : 

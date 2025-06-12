@@ -1,0 +1,2 @@
+model[] max_tokens[] temp[]
+prompt[[{"role":"user","content":"hello world"}]]

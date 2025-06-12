@@ -949,6 +949,7 @@ main() {
     return
   fi
 
+  local prompts="[]"
   local prompt=""
   if test "$use_stdin" -eq 1; then
     if ! is_development_mode && test -n "$context"; then
@@ -956,10 +957,18 @@ main() {
       return 1
     elif test -z "$context"; then
       if test -n "$*"; then
-        prompt="$(printf '%s:\n%s' "$*" "$(cat -)")"
-      else
-        prompt="$(cat -)"
+        local data
+        data="$("$CLIGPT_PLATFORM" messages system "$*")"
+        if test $? -ne 0; then
+          return 1
+        fi
+        prompts="$(additems "$prompts" "$data")"
+        if test -z "$CLIGPT_NO_HINT"; then
+          printf '%ssystem  : %s%s\n' "$esc_gray" "$*" "$esc_reset" >&2
+        fi
       fi
+
+      prompt="$(cat -)"
     fi
   else
     prompt="$*"
@@ -977,7 +986,6 @@ main() {
     printf '%smodel   : %s%s\n' "$esc_gray" "$CLIGPT_MODEL" "$esc_reset" >&2
   fi
 
-  local prompts="[]"
   if test -n "$context"; then
     if test "$context" != '-'; then
       printf '%scontext : %s%s\n' "$esc_gray" "$context" "$esc_reset" >&2
