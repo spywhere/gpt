@@ -200,9 +200,9 @@ is_interactive() {
 bootstrap() {
   if test -z "$CLIGPT_PLATFORM_STORAGE"; then
     if is_development_mode; then
-      CLIGPT_PLATFORM_STORAGE="./platforms"
+      CLIGPT_PLATFORM_STORAGE="./$CLIGPT_PLATFORM_PATH"
     else
-      CLIGPT_PLATFORM_STORAGE="$CLIGPT_CACHE/platforms"
+      CLIGPT_PLATFORM_STORAGE="$CLIGPT_CACHE/$CLIGPT_PLATFORM_PATH"
     fi
   fi
 
