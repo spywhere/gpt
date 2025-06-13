@@ -37,7 +37,7 @@ list_checksums() {
 }
 
 checksum_json() {
-  list_checksums platforms tests | jq -sc 'map({(.filename|tostring): del(.filename)}) | add'
+  list_checksums platforms tests/platforms | jq -sc 'map({(.filename|tostring): del(.filename)}) | add'
 }
 
 if test "$1" = "compile"; then
