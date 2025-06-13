@@ -1,5 +1,6 @@
 #!/bin/bash
 
+verbose=""
 filter=""
 cwd="$(dirname "$0")"
 root="$(dirname "$cwd")"
@@ -136,11 +137,13 @@ run_test() {
   if test $? -ne 0; then
     if is_interactive; then
       echo "$2$esc_red$failed $esc_gray$name$esc_reset"
+    else
+      echo "$2$name [$failed]"
+    fi
+    if test -n "$verbose"; then
       echo
       echo "$response" | sed 's/^/    /g'
       echo
-    else
-      echo "$2$name [$failed]"
     fi
   elif is_interactive; then
     echo "$2$esc_green$passed $esc_gray$name$esc_reset"
@@ -165,6 +168,10 @@ run_tests() {
       --filter)
         shift
         filter="$1"
+        ;;
+      --verbose)
+        shift
+        verbose="1"
         ;;
       *)
         ;;

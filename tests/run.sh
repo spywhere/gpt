@@ -25,9 +25,9 @@ for name in "$cwd"/*; do
 done
 
 if test -z "$1"; then
-  run_tests
+  run_tests --verbose
 else
-  run_tests --filter "$1"
+  run_tests --verbose --filter "$1"
 fi
 
 # describe_flags() {
