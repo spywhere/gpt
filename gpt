@@ -123,8 +123,48 @@ esc_green="" # indicate user messages
 esc_yellow="" # indicate assistant messages
 esc_red="" # indicate errors
 
+support_color() {
+  if test -n "$CLIGPT_FORCE_COLOR"; then
+    return 0
+  fi
+
+  if test -n "$CLIGPT_NO_COLOR"; then
+    return 1
+  fi
+
+  # is CI?
+  if test -n "$CI"; then
+    return 1
+  fi
+
+  # is tty?
+  if ! test -t 1; then
+    return 1
+  fi
+
+  # has $TERM set?
+  if test -z "$TERM"; then
+    return 1
+  fi
+
+  # has tput and tty?
+  if test -z "$(command -v tput)" -o -z "$(command -v tty)"; then
+    return 1
+  fi
+
+  # has some color supported
+  if test -z "$(tput colors)"; then
+    return 1
+  fi
+
+  # has less than 8 colors supported
+  if test "$(tput colors)" -lt 8; then
+    return 1
+  fi
+}
+
 inline_support=0
-if test -n "$CLIGPT_FORCE_COLOR" || (test -t 1 && test -n "$TERM" -a -n "$(command -v tput)" && test "$(tput colors)" -ge 8 && test -n "$(command -v tty)"); then
+if support_color; then
   if test -n "$(command -v wc)"; then
     inline_support=1
   fi

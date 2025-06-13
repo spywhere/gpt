@@ -19,8 +19,40 @@ esc_green="" # indicate passing tests
 esc_red="" # indicate failing tests
 esc_yellow="" # indicate variables
 
+support_color() {
+  # is CI?
+  if test -n "$CI"; then
+    return 1
+  fi
+
+  # is tty?
+  if ! test -t 1; then
+    return 1
+  fi
+
+  # has $TERM set?
+  if test -z "$TERM"; then
+    return 1
+  fi
+
+  # has tput and tty?
+  if test -z "$(command -v tput)" -o -z "$(command -v tty)"; then
+    return 1
+  fi
+
+  # has some color supported
+  if test -z "$(tput colors)"; then
+    return 1
+  fi
+
+  # has less than 8 colors supported
+  if test "$(tput colors)" -lt 8; then
+    return 1
+  fi
+}
+
 inline_support=0
-if test -t 1 && test -n "$TERM" -a -n "$(command -v tput)" && test "$(tput colors)" -ge 8 && test -n "$(command -v tty)"; then
+if support_color; then
   pending="⏺"
   skipped="○"
   passed="✓"
