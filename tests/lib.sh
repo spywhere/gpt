@@ -105,13 +105,22 @@ run_describe() {
   local prefix
   prefix="$2"
 
+  local has_failed=0
   if is_interactive; then
     echo "$prefix$name"
     run_tests --prefix "$prefix  "
+    local code=$?
+    if test $code -ne 0; then
+      has_failed=$code
+    fi
   else
     run_tests --prefix "$prefix$name > "
+    local code=$?
+    if test $code -ne 0; then
+      has_failed=$code
+    fi
   fi
-  return $?
+  return $has_failed
 }
 
 run_test() {
@@ -200,17 +209,19 @@ run_tests() {
   local has_failed=0
   for desc in $describes; do
     run_describe "$desc" "$prefix"
-    if test $? -ne 0; then
-      has_failed=$?
+    local code=$?
+    if test $code -ne 0; then
+      has_failed=$code
     fi
   done
   for testcase in $tests; do
     run_test "$testcase" "$prefix"
-    if test $? -ne 0; then
-      has_failed=$?
+    local code=$?
+    if test $code -ne 0; then
+      has_failed=$code
     fi
   done
-  return $?
+  return $has_failed
 }
 
 gpt() {
