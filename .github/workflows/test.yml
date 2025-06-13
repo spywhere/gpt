@@ -12,5 +12,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Run test suite
+        shell: 'script -q -e -c "bash {0}"'
         run: |
           make --no-print-directory test
