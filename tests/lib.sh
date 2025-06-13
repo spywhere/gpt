@@ -111,6 +111,7 @@ run_describe() {
   else
     run_tests --prefix "$prefix$name > "
   fi
+  return $?
 }
 
 run_test() {
@@ -134,7 +135,8 @@ run_test() {
 
   local response
   response="$(run_task "__$fn" "$2$pending $esc_gray$name$esc_reset")"
-  if test $? -ne 0; then
+  local code=$?
+  if test $code -ne 0; then
     if is_interactive; then
       echo "$2$esc_red$failed $esc_gray$name$esc_reset"
     else
@@ -150,6 +152,7 @@ run_test() {
   else
     echo "$2$name [$passed]"
   fi
+  return $code
 }
 
 run_tests() {
@@ -194,12 +197,20 @@ run_tests() {
     unset -f "$fn"
   done<<<"$(declare -F)"
 
+  local has_failed=0
   for desc in $describes; do
     run_describe "$desc" "$prefix"
+    if test $? -ne 0; then
+      has_failed=$?
+    fi
   done
   for testcase in $tests; do
     run_test "$testcase" "$prefix"
+    if test $? -ne 0; then
+      has_failed=$?
+    fi
   done
+  return $?
 }
 
 gpt() {
