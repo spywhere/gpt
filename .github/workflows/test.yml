@@ -1,0 +1,16 @@
+name: Test
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  tests:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run test suite
+        run: |
+          make --no-print-directory test
