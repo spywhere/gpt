@@ -5,4 +5,4 @@ json:
 	@sh scripts/compile.sh json
 
 test:
-	@sh tests/run.sh $(TEST)
+	@bash tests/run.sh $(TEST)
