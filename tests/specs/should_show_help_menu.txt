@@ -1,5 +1,7 @@
 **
 [User] /help
 Available commands:
+*
+/help, /h, /?                      Print this help message
 **
 [User]
