@@ -174,8 +174,14 @@ run_test() {
     return
   fi
 
+  task() {
+    expect_code=0
+    "__$fn"
+    return $expect_code
+  }
+
   local response
-  response="$(run_task "__$fn" "$2$pending $esc_gray$name$esc_reset")"
+  response="$(run_task task "$2$pending $esc_gray$name$esc_reset")"
   local code=$?
   if test $code -ne 0; then
     if is_interactive; then
@@ -183,7 +189,7 @@ run_test() {
     else
       echo "$2$name [$failed]"
     fi
-    if test -n "$verbose"; then
+    if test -n "$response" -a -n "$verbose"; then
       echo
       echo "$response" | sed 's/^/    /g'
       echo
@@ -264,14 +270,15 @@ match() {
   if test -z "$2"; then
     if test -z "$1"; then
       return 0
-    else
-      echo "Expected output to be empty, but got some content instead"
-      echo
-      echo "Output:"
-      echo "$1" | sed "s/^/  $esc_red/" | sed "s/$/$esc_reset/"
-      echo
-      exit 2
     fi
+
+    echo "Expected output to be empty, but got some content instead"
+    echo
+    echo "Output:"
+    echo "$1" | sed "s/^/  $esc_red/" | sed "s/$/$esc_reset/"
+    echo
+
+    return 2
   fi
 
   output_name="$2"
@@ -279,6 +286,7 @@ match() {
     echo "Expected output to match the content of $esc_yellow$output_name$esc_reset, but the file was not found"
     echo
     echo "Output:"
+
     if test -n "$1"; then
       echo "$1" | sed "s/^/  $esc_red/" | sed "s/$/$esc_reset/"
       echo
@@ -286,37 +294,40 @@ match() {
       echo "  ${esc_gray}empty$esc_reset"
       echo
     fi
-    exit 2
+
+    return 2
   fi
 
   output="$(cat "$output_name")"
 
-  if ! test "$1" = "$output"; then
-    echo "Expected output to match the content of $esc_yellow$output_name$esc_reset"
-    echo
-    echo "Output:"
-    if test -n "$1"; then
-      echo "$1" | sed "s/^/  $esc_red/" | sed "s/$/$esc_reset/"
-    else
-      echo "  ${esc_gray}empty$esc_reset"
-    fi
-    echo
-    echo "Expected:"
-    echo "$output" | sed "s/^/  $esc_green/" | sed "s/$/$esc_reset/"
-    echo
-    echo "Differences:"
-    local color
-    color="--color=never"
-    if is_interactive; then
-      color="--color=always"
-    fi
-    echo "$(echo "$input" | diff "$color" -u - "$output_name" | tail -n+4 | sed 's/^/  /')"
-    echo
-    exit 2
+  if test "$1" = "$output"; then
+    return 0
   fi
+
+  echo "expected output to match the content of $esc_yellow$output_name$esc_reset"
+  echo
+  echo "output:"
+  if test -n "$1"; then
+    echo "$1" | sed "s/^/  $esc_red/" | sed "s/$/$esc_reset/"
+  else
+    echo "  ${esc_gray}empty$esc_reset"
+  fi
+  echo
+  echo "expected:"
+  echo "$output" | sed "s/^/  $esc_green/" | sed "s/$/$esc_reset/"
+  echo
+  echo "differences:"
+  local color
+  color="--color=never"
+  if is_interactive; then
+    color="--color=always"
+  fi
+  echo "$(echo "$input" | diff "$color" -u - "$output_name" | tail -n+4 | sed 's/^/  /')"
+  echo
+  return 2
 }
 
-expect() {
+__expect() {
   local input
 
   to_branch() {
@@ -324,13 +335,16 @@ expect() {
       match)
         shift
 
+        local code
         if test -n "$1"; then
           match "$input" "$(echo "$1" | sed "s|*|$TEST_WORKDIR/$TEST_FN|")"
+          code=$?
         else
           match "$input" "$TEST_WORKDIR/$TEST_FN.txt"
+          code=$?
         fi
 
-        return
+        return $code
         ;;
       *)
         return 1
@@ -383,4 +397,13 @@ expect() {
   }
 
   prefix_branch "$@"
+}
+
+expect() {
+  __expect "$@"
+  local code=$?
+  if test $code -ne 0; then
+    expect_code=$code
+  fi
+  return $code
 }
