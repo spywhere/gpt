@@ -1,0 +1,7 @@
+**
+[User] /dump
+[{"role":"user","content":"hello"},{"role":"assistant","content":"model=\nmax_tokens=\ntemp=\nprompts=[{\"role\":\"user\",\"content\":\"hello\"}]"},{"role":"user","content":"how are you"},{"role":"assistant","content":"model=\nmax_tokens=\ntemp=\nprompts=[{\"role\":\"user\",\"content\":\"hello\"},{\"role\":\"assistant\",\"content\":\"model=\\nmax_tokens=\\ntemp=\\nprompts=[{\\\"role\\\":\\\"user\\\",\\\"content\\\":\\\"hello\\\"}]\"},{\"role\":\"user\",\"content\":\"how are you\"}]"}]
+[User] /clear
+[User] /dump
+[]
+[User] 

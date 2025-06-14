@@ -1,0 +1,6 @@
+**
+[User] /info
+Platform: testing
+Model:
+Timeout: 30s
+[User]
