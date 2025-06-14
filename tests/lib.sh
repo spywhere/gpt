@@ -8,6 +8,7 @@ root="$(dirname "$cwd")"
 tempfile="$(mktemp)"
 outfile="$(mktemp)"
 errfile="$(mktemp)"
+comfile="$(mktemp)"
 pending="?"
 skipped="S"
 passed="P"
@@ -263,10 +264,59 @@ run_tests() {
 }
 
 gpt() {
-  CLIGPT_CONFIG="$root/tests/common" CLIGPT_PLATFORM_STORAGE="$root/tests/platforms" "$root/gpt" "$@" >"$outfile" 2>"$errfile"
+  printf '' >"$comfile"
+  CLIGPT_CONFIG="$root/tests/common" CLIGPT_PLATFORM_STORAGE="$root/tests/platforms" "$root/gpt" "$@" >"$outfile" 2>"$errfile" >>"$comfile" 2>>"$comfile"
+}
+
+pattern_match() {
+  local code
+  code=0
+  local skip_to
+  while true; do
+    if test -z "$skip_to" && ! read -r line1; then
+      if read -r line2 <&2; then
+        # expected less
+        return 1
+      fi
+      break
+    fi
+
+    if test "$line1" = "**"; then
+      if ! read -r line1; then
+        # rest matched
+        return 0
+      fi
+      skip_to="$line1"
+      continue
+    fi
+
+    if ! read -r line2 <&2; then
+      # expected more
+      return 1
+    fi
+
+    if test -n "$skip_to" -a "$skip_to" != "$line2"; then
+      # skipping
+      continue
+    elif test -n "$skip_to"; then
+      skip_to=""
+    fi
+
+    if test "$line1" != "*" -a "$line1" != "$line2"; then
+      # mismatch
+      code=1
+      continue
+    fi
+  done <<<"$1" 2<<<"$2"
+  return $code
 }
 
 match() {
+  local kind="content"
+  if test "$1" = "--pattern"; then
+    shift
+    kind="pattern"
+  fi
   if test -z "$2"; then
     if test -z "$1"; then
       return 0
@@ -283,7 +333,7 @@ match() {
 
   output_name="$2"
   if ! test -f "$output_name"; then
-    echo "Expected output to match the content of $esc_yellow$output_name$esc_reset, but the file was not found"
+    echo "Expected output to match the $kind of $esc_yellow$output_name$esc_reset, but the file was not found"
     echo
     echo "Output:"
 
@@ -300,11 +350,15 @@ match() {
 
   output="$(cat "$output_name")"
 
-  if test "$1" = "$output"; then
+  if (
+    test "$kind" = "pattern" && pattern_match "$1" "$output"
+  ) || (
+    test "$kind" = "content" -a "$1" = "$output"
+  ); then
     return 0
   fi
 
-  echo "expected output to match the content of $esc_yellow$output_name$esc_reset"
+  echo "expected output to match the $kind of $esc_yellow$output_name$esc_reset"
   echo
   echo "output:"
   if test -n "$1"; then
@@ -335,12 +389,18 @@ __expect() {
       match)
         shift
 
+        local pattern
+        if test "$1" = "pattern"; then
+          shift
+          pattern="--pattern"
+        fi
+
         local code
         if test -n "$1"; then
-          match "$input" "$(echo "$1" | sed "s|*|$TEST_WORKDIR/$TEST_FN|")"
+          match $pattern "$input" "$(echo "$1" | sed "s|*|$TEST_WORKDIR/$TEST_FN|")"
           code=$?
         else
-          match "$input" "$TEST_WORKDIR/$TEST_FN.txt"
+          match $pattern "$input" "$TEST_WORKDIR/$TEST_FN.txt"
           code=$?
         fi
 
@@ -359,6 +419,9 @@ __expect() {
         ;;
       error)
         input="$(cat "$errfile")"
+        ;;
+      all)
+        input="$(cat "$comfile")"
         ;;
       *)
         return 1
