@@ -59,7 +59,7 @@ load_configs() {
   CLIGPT_PLATFORM="$(get_config '' platform)"
   CLIGPT_TEMP="$(get_config "$CLIGPT_PLATFORM" temperature)"
   CLIGPT_TOKEN="$(get_config "$CLIGPT_PLATFORM" token)"
-  CLIGPT_TIMEOUT="$(get_config "$CLIGPT_PLATFORM" timeout)"
+  CLIGPT_TIMEOUT="$(get_config "$CLIGPT_PLATFORM" timeout 30)"
 
   CLIGPT_MODEL="$(get_config "$CLIGPT_PLATFORM" model)"
   CLIGPT_API_BASE="$(get_config "$CLIGPT_PLATFORM" base_url)"
@@ -248,9 +248,6 @@ bootstrap() {
 
   if test -z "$CLIGPT_CONTEXT_STORAGE"; then
     CLIGPT_CONTEXT_STORAGE="."
-  fi
-  if test -z "$CLIGPT_TIMEOUT"; then
-    CLIGPT_TIMEOUT=30
   fi
 
   load_platforms
