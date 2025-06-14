@@ -263,10 +263,19 @@ run_tests() {
   return $has_failed
 }
 
-gpt() {
-  printf '' >"$comfile"
-  CLIGPT_CONFIG="$root/tests/common" CLIGPT_PLATFORM_STORAGE="$root/tests/platforms" "$root/gpt" "$@" >"$outfile" 2>"$errfile" >>"$comfile" 2>>"$comfile"
+_gpt() {
+  CLIGPT_CONFIG="$root/tests" CLIGPT_PLATFORM_STORAGE="$root/tests/platforms" "$root/gpt" "$@"
 }
+
+gpt() {
+  _gpt "$@" >"$outfile" 2>"$errfile"
+}
+
+combined_gpt() {
+  printf '' >"$comfile"
+  _gpt "$@" >"$comfile" 2>&1
+}
+
 
 pattern_match() {
   local code
@@ -274,17 +283,21 @@ pattern_match() {
   local skip_to
   while true; do
     if test -z "$skip_to" && ! read -r line1; then
-      if read -r line2 <&2; then
+      while read -r line2 <&2; do
         # expected less
-        return 1
-      fi
+        echo "$esc_red- $line2$esc_reset"
+        code=1
+      done
       break
     fi
 
     if test "$line1" = "**"; then
       if ! read -r line1; then
         # rest matched
-        return 0
+        while read -r line2 <&2; do
+          echo "  $esc_gray$line2$esc_reset"
+        done
+        return $code
       fi
       skip_to="$line1"
       continue
@@ -292,11 +305,22 @@ pattern_match() {
 
     if ! read -r line2 <&2; then
       # expected more
+      while true; do
+        if test "$line1" = "*"; then
+          echo "$esc_green+ ${esc_gray}...more line$esc_reset"
+        else
+          echo "$esc_green+ $line1$esc_reset"
+        fi
+        if ! read -r line1; then
+          break
+        fi
+      done
       return 1
     fi
 
     if test -n "$skip_to" -a "$skip_to" != "$line2"; then
       # skipping
+      echo "  $esc_gray$line2$esc_reset"
       continue
     elif test -n "$skip_to"; then
       skip_to=""
@@ -304,12 +328,17 @@ pattern_match() {
 
     if test "$line1" != "*" -a "$line1" != "$line2"; then
       # mismatch
+      echo "$esc_red- $line2$esc_reset"
+      echo "$esc_green+ $line1$esc_reset"
       code=1
       continue
     fi
+
+    echo "  $esc_gray$line2$esc_reset"
   done <<<"$1" 2<<<"$2"
   return $code
 }
+
 
 match() {
   local kind="content"
@@ -350,11 +379,13 @@ match() {
 
   output="$(cat "$output_name")"
 
-  if (
-    test "$kind" = "pattern" && pattern_match "$1" "$output"
-  ) || (
-    test "$kind" = "content" -a "$1" = "$output"
-  ); then
+  local diff
+  if test "$kind" = "pattern"; then
+    diff="$(pattern_match "$output" "$1")"
+    if test $? -eq 0; then
+      return 0
+    fi
+  elif test "$kind" = "content" -a "$1" = "$output"; then
     return 0
   fi
 
@@ -371,13 +402,19 @@ match() {
   echo "$output" | sed "s/^/  $esc_green/" | sed "s/$/$esc_reset/"
   echo
   echo "differences:"
-  local color
-  color="--color=never"
-  if is_interactive; then
-    color="--color=always"
+
+  if test "$kind" = "content"; then
+    local color
+    color="--color=never"
+    if is_interactive; then
+      color="--color=always"
+    fi
+    echo "$(echo "$input" | diff "$color" -u - "$output_name" | tail -n+4 | sed 's/^/  /')"
+    echo
+  elif test "$kind" = "pattern"; then
+    echo "$(echo "$diff" | sed 's/^/  /')"
+    echo
   fi
-  echo "$(echo "$input" | diff "$color" -u - "$output_name" | tail -n+4 | sed 's/^/  /')"
-  echo
   return 2
 }
 
@@ -389,18 +426,19 @@ __expect() {
       match)
         shift
 
-        local pattern
+        local cmd
+        cmd="match"
         if test "$1" = "pattern"; then
           shift
-          pattern="--pattern"
+          cmd="$cmd --pattern"
         fi
 
         local code
         if test -n "$1"; then
-          match $pattern "$input" "$(echo "$1" | sed "s|*|$TEST_WORKDIR/$TEST_FN|")"
+          $cmd "$input" "$(echo "$1" | sed "s|*|$cwd/specs/$TEST_FN|")"
           code=$?
         else
-          match $pattern "$input" "$TEST_WORKDIR/$TEST_FN.txt"
+          $cmd "$input" "$cwd/specs/$TEST_FN.txt"
           code=$?
         fi
 

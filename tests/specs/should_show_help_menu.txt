@@ -1,0 +1,6 @@
+**
+[User] /help
+Available commands:
+**
+[User]
+**

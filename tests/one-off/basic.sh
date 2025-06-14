@@ -3,14 +3,14 @@
 describe_basic_prompt() {
   test_direct_prompt() {
     gpt hello world
-    expect error to match tests/common/basic_error.txt
-    expect output to match tests/common/basic_output.txt
+    expect error to match tests/specs/basic_error.txt
+    expect output to match tests/specs/basic_output.txt
   }
 
   test_pipe_prompt() {
     echo hello world | gpt
-    expect error to match tests/common/basic_error.txt
-    expect output to match tests/common/basic_output.txt
+    expect error to match tests/specs/basic_error.txt
+    expect output to match tests/specs/basic_output.txt
   }
 }
 
