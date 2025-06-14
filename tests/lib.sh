@@ -210,24 +210,26 @@ run_tests() {
   local tests
   tests=""
 
-  while true; do
+  while test -n "$1"; do
     case "$1" in
       --prefix)
         shift
         prefix="$1"
+        shift
         ;;
       --filter)
         shift
         filter="$1"
+        shift
         ;;
       --verbose)
         shift
         verbose="1"
         ;;
       *)
+        break
         ;;
     esac
-    break
   done
 
   while read -r raw_fn; do
