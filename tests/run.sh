@@ -4,6 +4,17 @@ cwd="$(dirname "$0")"
 
 . "$cwd/lib.sh"
 
+file_filter=""
+
+case "$1" in
+  *.sh)
+    file_filter="$1"
+    shift
+    ;;
+  *)
+    ;;
+esac
+
 for name in "$cwd"/*; do
   if ! test -d "$name"; then
     continue
@@ -15,6 +26,10 @@ for name in "$cwd"/*; do
 
   for testfile in "$name"/*.sh; do
     if ! test -f "$testfile"; then
+      continue
+    fi
+
+    if test -n "$file_filter" -a "$(basename "$testfile")" != "$file_filter"; then
       continue
     fi
 
